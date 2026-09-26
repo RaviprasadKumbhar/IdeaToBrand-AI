@@ -14,8 +14,25 @@ import { useFOILStore } from '../store/foilStore';
 import { AppShell } from '../components/AppShell';
 import { IdeaInput } from '../stages/idea-input/IdeaInput';
 import { ChatWorkspace } from '../components/chat/ChatWorkspace';
+import { AuthContext, type AuthContextType } from '../context/authContextInstance';
 import { AuthProvider } from '../context/AuthContext';
 import * as apiClient from '../lib/api-client';
+
+function createMockAuthContext(overrides: Partial<AuthContextType> = {}): AuthContextType {
+  return {
+    user: null,
+    session: null,
+    loading: false,
+    isConfigured: true,
+    signIn: vi.fn().mockResolvedValue({ error: null }),
+    signUp: vi.fn().mockResolvedValue({ error: null, requiresVerification: true }),
+    signOut: vi.fn().mockResolvedValue(undefined),
+    resetPassword: vi.fn().mockResolvedValue({ error: null }),
+    updatePassword: vi.fn().mockResolvedValue({ error: null }),
+    resendVerification: vi.fn().mockResolvedValue({ error: null }),
+    ...overrides,
+  };
+}
 
 // Mock generateStage
 vi.mock('../lib/api-client', async (importOriginal) => {
@@ -147,30 +164,22 @@ describe('Frontend Integration Fix — Auth UI', () => {
   });
 
   it('6 & 7. Authenticated user identity displays with only ONE Sign out action', () => {
-    // Set authenticated local session
-    localStorage.setItem(
-      'ideatobrand_local_session',
-      JSON.stringify({
-        access_token: 'local-demo-token',
-        token_type: 'bearer',
-        user: {
-          id: 'user-42',
-          email: 'founder@brandforge.ai',
-          user_metadata: { full_name: 'Priya Sharma' },
-          role: 'authenticated',
-          aud: 'authenticated',
-        },
-      })
-    );
+    const mockUser = {
+      id: 'user-42',
+      email: 'founder@brandforge.ai',
+      user_metadata: { full_name: 'Priya Sharma' },
+      role: 'authenticated',
+      aud: 'authenticated',
+    };
 
     render(
-      <AuthProvider>
+      <AuthContext.Provider value={createMockAuthContext({ user: mockUser as any })}>
         <MemoryRouter>
           <AppShell>
             <p>Protected Content</p>
           </AppShell>
         </MemoryRouter>
-      </AuthProvider>
+      </AuthContext.Provider>
     );
 
     // Authenticated user display name
@@ -187,13 +196,13 @@ describe('Frontend Integration Fix — Auth UI', () => {
 
   it('8 & 9. Unauthenticated state shows Login and Create account with no Sign out or duplicate auth controls', () => {
     render(
-      <AuthProvider>
+      <AuthContext.Provider value={createMockAuthContext({ user: null })}>
         <MemoryRouter>
           <AppShell>
             <p>Public Content</p>
           </AppShell>
         </MemoryRouter>
-      </AuthProvider>
+      </AuthContext.Provider>
     );
 
     expect(screen.getByRole('button', { name: /^login$/i })).toBeInTheDocument();
@@ -253,13 +262,7 @@ describe('Frontend Integration Fix — Chat UX & Idea Submission', () => {
 
   it('14. Renders human-readable stage content without raw JSON strings', async () => {
     // Seed store with an existing idea so subsequent message triggers stage generation
-    useFOILStore.setState((state) => ({
-      ...state,
-      ctx: {
-        ...state.ctx,
-        user_facts: { business_description: 'Artisan sourdough micro-bakery' },
-      },
-    }));
+    useFOILStore.getState().setIdeaInput({ business_description: 'Artisan sourdough micro-bakery' });
 
     const mockGenerate = vi.mocked(apiClient.generateStage);
     mockGenerate.mockResolvedValueOnce({
@@ -300,13 +303,7 @@ describe('Frontend Integration Fix — Chat UX & Idea Submission', () => {
   });
 
   it('15. Error state renders friendly message with retry option on failure', async () => {
-    useFOILStore.setState((state) => ({
-      ...state,
-      ctx: {
-        ...state.ctx,
-        user_facts: { business_description: 'AI-assisted design studio' },
-      },
-    }));
+    useFOILStore.getState().setIdeaInput({ business_description: 'AI-assisted design studio' });
 
     const mockGenerate = vi.mocked(apiClient.generateStage);
     mockGenerate.mockRejectedValueOnce(new Error('Network timeout'));

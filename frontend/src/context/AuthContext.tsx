@@ -88,8 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Unconfirmed or signed out
             setSession(null);
             setUser(currentUser);
-            if (!currentUser) {
+            if (event === 'SIGNED_OUT') {
               useFOILStore.getState().resetProject();
+              useFOILStore.getState().setActiveUser(null);
+            } else if (!currentUser) {
               useFOILStore.getState().setActiveUser(null);
             }
           }

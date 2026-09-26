@@ -140,9 +140,9 @@ describe('Signup UX & Verification Handling', () => {
       </AuthContext.Provider>
     );
 
-    await userEvent.type(screen.getByLabelText(/email address/i), 'founder@example.com');
-    await userEvent.type(screen.getByLabelText(/^password/i), 'securePassword123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'securePassword123');
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'founder@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'securePassword123' } });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'securePassword123' } });
 
     const submitBtn = screen.getByRole('button', { name: /create account/i });
     await userEvent.click(submitBtn);
@@ -181,9 +181,9 @@ describe('Signup UX & Verification Handling', () => {
       </AuthContext.Provider>
     );
 
-    await userEvent.type(screen.getByLabelText(/email address/i), 'test@example.com');
-    await userEvent.type(screen.getByLabelText(/^password/i), 'password123');
-    await userEvent.type(screen.getByLabelText(/confirm password/i), 'password123');
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'test@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'password123' } });
 
     await userEvent.click(screen.getByRole('button', { name: /create account/i }));
 
@@ -225,8 +225,8 @@ describe('Login UX & Error Handling', () => {
       </AuthContext.Provider>
     );
 
-    await userEvent.type(screen.getByLabelText(/email address/i), 'user@example.com');
-    await userEvent.type(screen.getByLabelText(/^password/i), 'password123');
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'user@example.com' } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'password123' } });
     await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
 
     await waitFor(() => {
