@@ -671,7 +671,7 @@ Prepare a 2–4 minute demo covering:
 - differentiation
 
 ## T-048 — Demo Backup
-**Owner:** Member 3 | **Priority:** P1
+**Owner:** Member 3 | **Priority:** P1 | **Status:** DONE
 
 Prepare a stable demo project, known-good build, environment backup, and recovery instructions.
 
@@ -682,7 +682,7 @@ Do not fake live AI behavior.
 # 24. Phase 20 — Submission Preparation
 
 ## T-049 — GitHub / Documentation
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Prepare:
 - setup instructions
@@ -713,7 +713,7 @@ Prepare required Instagram content according to the official hackathon requireme
 Each participant completes their own required submission where individual submission is required.
 
 ## T-052 — LinkedIn Material
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Prepare required LinkedIn content including project, target users, problem, solution, workflow, features, technology, contribution, differentiation, Inkloom information, GitHub/live links, required tags, and the demo video uploaded directly to LinkedIn.
 
