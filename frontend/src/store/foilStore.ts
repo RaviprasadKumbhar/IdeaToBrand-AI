@@ -19,6 +19,7 @@ import type {
 } from '../../../shared/types';
 import { affectedFields } from '../../../shared/dependency-map';
 import { transition } from '../../../shared/state-machine';
+import { saveWorkspaceProject, type WorkspaceProjectData } from '../lib/supabase-workspace';
 
 // ─── Initial state ──────────────────────────────────────────────────────────
 
@@ -130,6 +131,9 @@ export interface FOILStore {
 
   // Session reset (new project)
   resetProject: () => void;
+
+  // Project persistence loader (Phase 6)
+  loadProjectIntoStore: (project: WorkspaceProjectData) => void;
 }
 
 // ─── Store implementation ─────────────────────────────────────────────────────
@@ -336,6 +340,15 @@ export const useFOILStore = create<FOILStore>((set) => {
     resetProject: () => {
       sessionStorage.removeItem(SESSION_KEY);
       set({ ctx: createInitialContext(), uiStates: createInitialUIStates(), ideaInput: null, currentStage: 'idea-input' });
+    },
+
+    loadProjectIntoStore: (project) => {
+      set({
+        ctx: project.context,
+        uiStates: project.ui_states || createInitialUIStates(),
+        currentStage: project.current_stage || 'discovery',
+      });
+      persistToSession(project.context);
     },
 
     addScenarioOverride: (override) => {
