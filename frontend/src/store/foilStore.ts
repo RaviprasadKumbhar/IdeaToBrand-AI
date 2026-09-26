@@ -20,7 +20,7 @@ import type {
 import { affectedFields } from '../../../shared/dependency-map';
 import { transition } from '../../../shared/src/store/approvalStateMachine';
 import type { ApprovalEvent } from '../../../shared/src/types/index';
-import { saveWorkspaceProject, type WorkspaceProjectData } from '../lib/supabase-workspace';
+import type { WorkspaceProjectData } from '../lib/supabase-workspace';
 
 // ─── Initial state ──────────────────────────────────────────────────────────
 

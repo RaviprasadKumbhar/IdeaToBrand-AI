@@ -128,7 +128,8 @@ export function ChatWorkspace() {
       }
     }
     restoreSaved();
-  }, [user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, ctx.project_id]);
 
   // Auto-scroll to bottom of conversation
   useEffect(() => {
@@ -186,6 +187,7 @@ export function ChatWorkspace() {
         ui_states: uiStates,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, ctx.approved_decisions, facts, currentWorkingStage]);
 
   // ─── Message Handling ──────────────────────────────────────────────────────
