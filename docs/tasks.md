@@ -519,7 +519,7 @@ Only implement if stable and useful. It must not delay working Markdown export.
 # 19. Phase 15 — End-to-End Integration
 
 ## T-037 — Full Stage Integration
-**Owner:** Member 2 + Member 3 | **Priority:** P0 | **Dependencies:** T-015 through T-035
+**Owner:** Member 2 + Member 3 | **Priority:** P0 | **Dependencies:** T-015 through T-035 | **Status:** DONE
 
 Connect:
 - frontend
@@ -540,7 +540,7 @@ Connect:
 # 20. Phase 16 — Testing and QA
 
 ## T-038 — Unit / Contract Testing
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Test:
 - schemas
@@ -581,7 +581,7 @@ Test:
 - responsive behavior
 
 ## T-041 — Full End-to-End QA
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-037, T-038, T-039, T-040
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-037, T-038, T-039, T-040 | **Status:** DONE
 
 Complete the entire workflow from a new idea to export.
 
