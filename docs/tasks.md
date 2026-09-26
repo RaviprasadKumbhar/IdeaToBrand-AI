@@ -477,12 +477,12 @@ Support Accept / Reject / Edit.
 # 18. Phase 14 — Kit Assembly and Export
 
 ## T-033 — Kit Assembly
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** Required P0 stages, T-031
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** Required P0 stages, T-031 | **Status:** DONE
 
 Assemble the brand system from authoritative approved decisions only.
 
 ## T-034 — Export Gating
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-033
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-033 | **Status:** DONE
 
 Export MUST fail when:
 - required stage is not approved;
@@ -491,7 +491,7 @@ Export MUST fail when:
 - export validation fails.
 
 ## T-035 — Markdown Export
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-034
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-034 | **Status:** DONE
 
 Export the complete approved brand system.
 
