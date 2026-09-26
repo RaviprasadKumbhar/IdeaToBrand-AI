@@ -58,7 +58,7 @@ export function KitExportStage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'foil-brand-kit.md';
+    a.download = 'ideatobrand-kit.md';
     a.click();
     URL.revokeObjectURL(url);
   }

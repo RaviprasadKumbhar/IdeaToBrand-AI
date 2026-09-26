@@ -42,7 +42,7 @@ function FactCard({ text }: { text: string }) {
 function AssumptionCard({ value, rationale }: { value: string; rationale: string }) {
   return (
     <div className="border border-amber-200 bg-amber-50/50 rounded-sm p-3">
-      <p className="section-label text-amber-700 mb-1">Assumption · Inferred by FOIL</p>
+      <p className="section-label text-amber-700 mb-1">Assumption · Inferred by IdeaToBrand AI</p>
       <p className="text-sm text-ink-950 mb-1.5">{value}</p>
       <p className="text-xs text-ink-500"><span className="font-medium">Rationale:</span> {rationale}</p>
     </div>
@@ -111,7 +111,7 @@ export function DiscoveryStage() {
       stage="discovery"
       stageNumber={1}
       title="Discovery"
-      description="FOIL organizes your idea into a strategic foundation — separating what you told it from what it inferred."
+      description="IdeaToBrand AI organizes your idea into a strategic foundation — separating what you told it from what it inferred."
       approvalState={ui.approval_state}
       isLoading={ui.is_loading}
       error={ui.error}

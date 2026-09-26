@@ -59,7 +59,7 @@ export async function assembleExport(
   return {
     isMock: true,
     note: '[MOCK ADAPTER] — Replace with real POST /api/export when backend is available.',
-    content: '# FOIL Brand Kit\n\n[Export assembled from approved decisions]\n',
+    content: '# IdeaToBrand AI — Brand Kit\n\n[Export assembled from approved decisions]\n',
     status: 'exported',
   };
 }

@@ -145,7 +145,7 @@ export function ConsistencyAuditStage() {
         <p className="section-label mb-1">Stage 8</p>
         <h1 id="audit-heading" className="text-h1 font-bold text-ink-950">Holistic Consistency Audit</h1>
         <p className="text-body text-ink-500 mt-1.5">
-          FOIL checks the complete approved brand system as one connected whole — not field by field.
+          IdeaToBrand AI checks the complete approved brand system as one connected whole — not field by field.
           All findings must be resolved before you can export the brand kit.
         </p>
       </header>
@@ -170,7 +170,7 @@ export function ConsistencyAuditStage() {
           <div>
             <h2 className="text-h3 font-semibold text-ink-950 mb-1">Ready to audit</h2>
             <p className="text-sm text-ink-500 max-w-sm">
-              FOIL will check your entire approved brand system for contradictions, vague claims,
+              IdeaToBrand AI will check your entire approved brand system for contradictions, vague claims,
               audience mismatches, and consistency gaps.
             </p>
           </div>

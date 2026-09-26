@@ -71,7 +71,7 @@ export function LoadingState({ stage }: LoadingStateProps) {
 
       <div className="max-w-xs">
         <p className="text-h3 text-ink-950 font-semibold mb-1">{title}</p>
-        <p className="text-xs text-ink-500 mb-4">FOIL is organizing the information into:</p>
+        <p className="text-xs text-ink-500 mb-4">IdeaToBrand AI is organizing the information into:</p>
         <ul className="text-sm text-ink-700 space-y-2 text-left">
           {bullets.map((b, i) => (
             <li key={b} className="flex items-center gap-2.5">

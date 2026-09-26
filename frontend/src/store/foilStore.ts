@@ -61,7 +61,7 @@ const SESSION_KEY = 'foil_shared_context';
 function persistToSession(ctx: SharedContext): void {
   try {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(ctx));
-  } catch (_) {
+  } catch {
     // sessionStorage unavailable — continue without persistence
   }
 }
@@ -70,7 +70,7 @@ function loadFromSession(): SharedContext | null {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     return raw ? (JSON.parse(raw) as SharedContext) : null;
-  } catch (_) {
+  } catch {
     return null;
   }
 }
@@ -134,7 +134,7 @@ export interface FOILStore {
 
 // ─── Store implementation ─────────────────────────────────────────────────────
 
-export const useFOILStore = create<FOILStore>((set, get) => {
+export const useFOILStore = create<FOILStore>((set) => {
   const savedCtx = loadFromSession();
 
   return {
