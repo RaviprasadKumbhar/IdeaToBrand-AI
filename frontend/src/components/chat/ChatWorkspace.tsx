@@ -77,6 +77,9 @@ export function ChatWorkspace() {
     setIdeaInput,
     writeApprovedDecision,
     resetProject,
+    cloudSaveStatus,
+    retrySave,
+    setActiveUser,
   } = useFOILStore();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -119,6 +122,13 @@ export function ChatWorkspace() {
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
     }
   }, [inputMessage]);
+
+  // Sync active Supabase user into FOIL store
+  useEffect(() => {
+    if (user?.id) {
+      setActiveUser(user.id);
+    }
+  }, [user?.id, setActiveUser]);
 
   const approvedCount = Object.values(ctx.approved_decisions).filter(Boolean).length;
 
@@ -343,10 +353,35 @@ export function ChatWorkspace() {
                 ? String(ctx.user_facts.business_description).slice(0, 36) + '…'
                 : 'New Brand Project'}
             </span>
-            <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] text-green-700 font-medium bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              Session Active
-            </span>
+            {cloudSaveStatus === 'saving' && (
+              <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] text-amber-700 font-medium bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                Saving to Supabase...
+              </span>
+            )}
+            {cloudSaveStatus === 'saved' && (
+              <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] text-green-700 font-medium bg-green-50 px-2.5 py-0.5 rounded-full border border-green-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                Saved to Supabase
+              </span>
+            )}
+            {cloudSaveStatus === 'error' && (
+              <button
+                type="button"
+                onClick={() => retrySave()}
+                className="hidden md:inline-flex items-center gap-1.5 text-[11px] text-red-700 font-medium bg-red-50 hover:bg-red-100 px-2.5 py-0.5 rounded-full border border-red-200 cursor-pointer transition-colors"
+                title="Click to retry saving to Supabase"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                Save failed — Retry
+              </button>
+            )}
+            {cloudSaveStatus === 'idle' && (
+              <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] text-ink-600 font-medium bg-surface-100 px-2.5 py-0.5 rounded-full border border-border">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                Supabase Synced
+              </span>
+            )}
           </div>
         </div>
 

@@ -11,6 +11,7 @@ const fallbackAuth: AuthContextType = {
   signOut: async () => {},
   resetPassword: async () => ({ error: null }),
   updatePassword: async () => ({ error: null }),
+  resendVerification: async () => ({ error: null }),
 };
 
 export function useAuth(): AuthContextType {
