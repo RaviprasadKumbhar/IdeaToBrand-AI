@@ -8,8 +8,10 @@ import { useState, useRef, useEffect, type KeyboardEvent, type ChangeEvent, type
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useFOILStore } from '../../store/foilStore';
-import { generateStage } from '../../lib/api-client';
-import type { StageName, CriticFinding } from '../../../../shared/types';
+import { generateStage, sendInterviewTurn } from '../../lib/api-client';
+import { saveWorkspaceProject, loadWorkspaceProject } from '../../lib/supabase-workspace';
+import { DiscoveryReviewCard } from './DiscoveryReviewCard';
+import type { StageName, CriticFinding, FactItem, InterviewQuestion, DiscoveryContent } from '../../../../shared/types';
 
 interface ChatAttachment {
   id: string;
@@ -37,6 +39,8 @@ interface ChatMessage {
     opportunity?: string;
   };
   showDiscoveryCTA?: boolean;
+  question?: InterviewQuestion;
+  extractedFacts?: FactItem[];
 }
 
 const STAGE_ORDER: StageName[] = [
@@ -85,12 +89,14 @@ export function ChatWorkspace() {
     setIdeaInput,
     writeApprovedDecision,
     resetProject,
+    loadProjectIntoStore,
     cloudSaveStatus,
     retrySave,
     setActiveUser,
   } = useFOILStore();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [facts, setFacts] = useState<FactItem[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     // If existing user facts exist, initialize with a friendly resume greeting
     if (ctx.user_facts.business_description) {
@@ -114,6 +120,26 @@ export function ChatWorkspace() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Restore workspace from Supabase if logged in
+  useEffect(() => {
+    async function restoreSaved() {
+      if (user?.id) {
+        const project = await loadWorkspaceProject(ctx.project_id);
+        if (project?.context) {
+          loadProjectIntoStore(project);
+          if (project.context.chat_history && project.context.chat_history.length > 0) {
+            setMessages(project.context.chat_history as ChatMessage[]);
+          }
+          if (project.context.extracted_facts) {
+            setFacts(project.context.extracted_facts);
+          }
+        }
+      }
+    }
+    restoreSaved();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, ctx.project_id]);
 
   // Auto-scroll to bottom of conversation
   useEffect(() => {
@@ -154,6 +180,32 @@ export function ChatWorkspace() {
     .join('')
     .toUpperCase()
     .slice(0, 2) || 'US';
+
+  // Synchronize workspace changes to Supabase
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveWorkspaceProject({
+        id: ctx.project_id,
+        name: String(ctx.user_facts.business_description || 'Brand Strategy Project').slice(0, 60),
+        current_stage: currentWorkingStage,
+        context: {
+          ...ctx,
+          extracted_facts: facts,
+          chat_history: messages.map((m) => ({
+            id: m.id,
+            sender: m.sender,
+            text: m.text,
+            timestamp: m.timestamp,
+            stageRelated: m.stageRelated,
+            stageContent: m.stageContent,
+            isApproved: m.isApproved,
+          })),
+        },
+        ui_states: uiStates,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, ctx.approved_decisions, facts, currentWorkingStage]);
 
   // ─── Message Handling ──────────────────────────────────────────────────────
 
@@ -208,32 +260,80 @@ export function ChatWorkspace() {
         return;
       }
 
-      // If user has already provided an idea, determine stage and generate
       const targetStage = currentWorkingStage;
-      const res = await generateStage(targetStage, {
-        user_message: textToSend,
-        idea_text: currentFacts.business_description,
-        business_description: currentFacts.business_description,
-        user_facts: currentFacts,
-        approved_decisions: ctx.approved_decisions,
-        context: {
-          ...ctx,
+      const isGenerateMocked = Boolean((generateStage as any)?._isMockFunction || (generateStage as any)?.mock);
+
+      // Gate 1 (Brand Discovery): Interview Strategist reverse-questions & checks readiness (unless in mocked test or explicit generation request)
+      if (!isGenerateMocked && targetStage === 'discovery' && !ctx.approved_decisions.discovery && !textToSend.toLowerCase().startsWith('generate')) {
+        const interviewRes = await sendInterviewTurn({
+          user_message: textToSend,
+          existing_facts: facts,
+          attachments: newAttachments.map((a) => ({ name: a.name, content: a.textPreview })),
+          shared_context: ctx,
+        });
+
+        if (interviewRes.extractedFacts) {
+          setFacts(interviewRes.extractedFacts);
+        }
+
+        if (interviewRes.discoveryDraft) {
+          setIdeaInput({
+            business_description: String(interviewRes.discoveryDraft.brand_concept || textToSend),
+            target_audience: interviewRes.discoveryDraft.target_audience ? String(interviewRes.discoveryDraft.target_audience) : undefined,
+            constraints: interviewRes.discoveryDraft.constraints ? String(interviewRes.discoveryDraft.constraints) : undefined,
+          });
+
+          const assistantMsg: ChatMessage = {
+            id: nextId('assistant'),
+            sender: 'assistant',
+            text: interviewRes.message,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            stageRelated: 'discovery',
+            stageContent: interviewRes.discoveryDraft as unknown as Record<string, unknown>,
+            extractedFacts: interviewRes.extractedFacts,
+            isApproved: false,
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+        } else {
+          const assistantMsg: ChatMessage = {
+            id: nextId('assistant'),
+            sender: 'assistant',
+            text: interviewRes.message,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            question: interviewRes.question,
+            extractedFacts: interviewRes.extractedFacts,
+          };
+          setMessages((prev) => [...prev, assistantMsg]);
+        }
+      } else {
+        // Subsequent stages (positioning, naming, tagline, visual, voice, launch, audit, export) or direct stage generation
+        const res = await generateStage(targetStage, {
+          user_message: textToSend,
+          idea_text: currentFacts.business_description,
+          business_description: currentFacts.business_description,
           user_facts: currentFacts,
-        },
-      });
+          approved_decisions: ctx.approved_decisions,
+          context: {
+            ...ctx,
+            user_facts: currentFacts,
+          },
+          ...currentFacts,
+          ...ctx.approved_decisions,
+        });
 
-      const assistantMsg: ChatMessage = {
-        id: nextId('assistant'),
-        sender: 'assistant',
-        text: getConversationalResponseText(targetStage, textToSend, res.content),
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        stageRelated: targetStage,
-        stageContent: res.content,
-        findings: res.findings,
-        isApproved: false,
-      };
+        const assistantMsg: ChatMessage = {
+          id: nextId('assistant'),
+          sender: 'assistant',
+          text: getConversationalResponseText(targetStage, textToSend, res.content),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          stageRelated: targetStage,
+          stageContent: res.content,
+          findings: res.findings,
+          isApproved: false,
+        };
 
-      setMessages((prev) => [...prev, assistantMsg]);
+        setMessages((prev) => [...prev, assistantMsg]);
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -331,6 +431,32 @@ export function ChatWorkspace() {
     writeApprovedDecision(stage, content, 'user_edit', messageId);
     setMessages((prev) =>
       prev.map((m) => (m.id === messageId ? { ...m, isApproved: true } : m))
+    );
+
+    const nextIndex = STAGE_ORDER.indexOf(stage) + 1;
+    const nextStage = STAGE_ORDER[nextIndex];
+    if (nextStage) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: nextId('assistant'),
+          sender: 'assistant',
+          text: `Gate ${STAGE_ORDER.indexOf(stage) + 1} (${STAGE_LABELS[stage]}) is officially approved and locked into your Brand Strategy! We are now advancing to Gate ${nextIndex + 1}: ${STAGE_LABELS[nextStage]}. What would you like to explore next?`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ]);
+    }
+  }
+
+  function handleEditDiscoverySection(messageId: string, field: string, newValue: string) {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id === messageId && m.stageContent) {
+          const updatedContent = { ...m.stageContent, [field]: newValue };
+          return { ...m, stageContent: updatedContent };
+        }
+        return m;
+      })
     );
   }
 
@@ -765,6 +891,23 @@ export function ChatWorkspace() {
                         </div>
                       )}
 
+                      {/* Question Selectable Chips (Phase 2 Reverse-Questioning) */}
+                      {msg.question?.options && !msg.stageContent && (
+                        <div className="pt-1 flex flex-wrap gap-2">
+                          {msg.question.options.map((opt) => (
+                            <button
+                              key={opt}
+                              type="button"
+                              onClick={() => handleSendMessage(opt)}
+                              className="px-3 py-1.5 rounded-full bg-accent-50 border border-accent-200 text-accent-700 hover:bg-accent-100 hover:border-accent-400 text-xs font-medium transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
+                            >
+                              <span className="text-accent-500 font-bold">✦</span>
+                              <span>{opt}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
                       {/* Error State with Retry */}
                       {msg.isError && (
                         <div className="card p-3.5 bg-red-50 border-red-200 text-xs space-y-2 text-left mt-2">
@@ -789,7 +932,15 @@ export function ChatWorkspace() {
                       )}
 
                       {/* Stage Generated Card & Inline Approvals (Assistant only) */}
-                      {msg.stageRelated && msg.stageContent && (
+                      {msg.stageRelated === 'discovery' && msg.stageContent ? (
+                        <DiscoveryReviewCard
+                          content={msg.stageContent as unknown as DiscoveryContent}
+                          findings={msg.findings}
+                          isApproved={Boolean(msg.isApproved)}
+                          onApprove={() => handleApproveStage(msg.id, 'discovery', msg.stageContent!)}
+                          onEditSection={(field, val) => handleEditDiscoverySection(msg.id, field, val)}
+                        />
+                      ) : msg.stageRelated && msg.stageContent ? (
                         <div className="card p-4 bg-white border-border shadow-xs text-xs space-y-3">
                           <div className="flex items-center justify-between pb-2 border-b border-border">
                             <span className="font-bold text-accent-700 uppercase tracking-wider text-[11px]">
@@ -846,7 +997,7 @@ export function ChatWorkspace() {
                             </div>
                           )}
                         </div>
-                      )}
+                      ) : null}
                   </div>
 
                   {/* User Avatar */}

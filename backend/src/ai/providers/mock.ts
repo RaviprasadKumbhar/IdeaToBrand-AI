@@ -17,21 +17,52 @@ export interface MockAIProviderOptions {
   delayMs?: number;
 }
 
-function extractIdeaFromPrompt(prompt: string): string | null {
-  const match =
-    prompt.match(/User's Raw Idea:\s*\n?"([^"]+)"/i) ||
-    prompt.match(/Business Description:\s*([^\n]+)/i) ||
-    prompt.match(/business_description["':\s]+([^"'\n,}]+)/i) ||
-    prompt.match(/idea_text["':\s]+([^"'\n,}]+)/i);
-  if (!match) return null;
-  const idea = match[1].trim();
-  return idea.length > 0 ? idea : null;
+function extractContextFromPrompt(prompt: string) {
+  let concept = '';
+  let audience = '';
+  const facts: string[] = [];
+
+  const rawMatch = prompt.match(/User's Raw Idea:\s*\n?"?([^"\n]+)"?/i);
+  if (rawMatch && rawMatch[1]) {
+    concept = rawMatch[1].trim();
+  }
+
+  const descMatch = prompt.match(/Business Description:\s*([^\n]+)/i);
+  if (descMatch && descMatch[1]) {
+    concept = descMatch[1].trim();
+  }
+
+  const jsonDescMatch = prompt.match(/business_description["':\s]+([^"'\n,}]+)/i);
+  if (!concept && jsonDescMatch && jsonDescMatch[1]) {
+    concept = jsonDescMatch[1].trim();
+  }
+
+  const ideaTextMatch = prompt.match(/idea_text["':\s]+([^"'\n,}]+)/i);
+  if (!concept && ideaTextMatch && ideaTextMatch[1]) {
+    concept = ideaTextMatch[1].trim();
+  }
+
+  const factsMatch = prompt.match(/Confirmed User Facts:\s*([\s\S]*?)(?=\n\n|\n[A-Z]|$)/i);
+  if (factsMatch && factsMatch[1]) {
+    const lines = factsMatch[1].split('\n').map((l) => l.replace(/^-\s*/, '').trim()).filter(Boolean);
+    facts.push(...lines);
+  }
+
+  // Check for audience in concept
+  const audMatch = concept.match(/\b(for|to)\s+([a-zA-Z\s]{3,40}?)(?:\bin\b|[.,;]|$)/i);
+  if (audMatch && audMatch[2]) {
+    audience = audMatch[2].trim();
+  }
+
+  return { concept, audience, facts };
 }
 
 function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string {
-  const userIdea = extractIdeaFromPrompt(prompt);
+  const { concept, audience, facts } = extractContextFromPrompt(prompt);
+  const userIdea = concept;
   const isIndianSnack = userIdea ? /snack|namkeen|indian|chaat|millet|food/i.test(userIdea) : false;
-  const isCustomIdea = userIdea ? !/hackathon|capstone|teammate|matchmak/i.test(userIdea) : false;
+  const isStudentApp = /student|academic|class project|teammate|coursework/i.test(prompt);
+  const isCustomIdea = userIdea ? !isStudentApp : false;
 
   if (schema) {
     const shape = (schema as any).shape || (typeof (schema as any)._def?.shape === 'function' ? (schema as any)._def.shape() : (schema as any)._def?.shape);
@@ -67,31 +98,31 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
             ],
           });
         }
-        if (isCustomIdea && userIdea) {
+        if (!isStudentApp && concept) {
           return JSON.stringify({
             directions: [
               {
-                title: 'The Focused Specialist',
-                category: 'Purpose-Built Brand',
-                target_audience: `Consumers and stakeholders seeking ${userIdea.slice(0, 60)}`,
-                core_problem: `Existing solutions fail to solve core pain points in ${userIdea.slice(0, 50)}`,
-                differentiator: `Purpose-built features and streamlined execution tailored to ${userIdea.slice(0, 40)}`,
-                value_proposition: `The dedicated standard for ${userIdea.slice(0, 50)}`,
-                competitive_angle: 'Unlike legacy generic tools, engineered from first principles for this specific use case',
-                strategic_rationale: 'Deep vertical focus enables superior customer retention and loyalty',
-                potential_weakness: 'Requires disciplined niche focus before horizontal expansion',
+                title: 'The Artisanal Standard',
+                category: 'Direct-to-Consumer / Lifestyle',
+                target_audience: audience || 'Conscious consumers seeking quality',
+                core_problem: `Generic mass-market alternatives lack soul and quality for ${concept}`,
+                differentiator: 'Direct artisan sourcing with radical quality transparency',
+                value_proposition: `Elevated, honest ${concept} designed to last`,
+                competitive_angle: 'Unlike mass-market retailers, focuses on craftsmanship and authentic materials',
+                strategic_rationale: 'Capitalizes on consumer flight to authentic, enduring products',
+                potential_weakness: 'Higher unit economics may limit initial high-volume velocity',
                 critic_findings: [],
               },
               {
-                title: 'The High-Velocity Alternative',
-                category: 'Modern Platform',
-                target_audience: `Modern teams and individuals requiring accessible ${userIdea.slice(0, 50)}`,
-                core_problem: `High complexity, friction, and cost in current offerings`,
-                differentiator: 'Frictionless onboarding and rapid time-to-value',
-                value_proposition: 'Faster, simpler, and more transparent',
-                competitive_angle: 'Lower barrier to adoption compared to established incumbents',
-                strategic_rationale: 'Broad appeal with fast organic growth flywheel',
-                potential_weakness: 'Lower switching costs require constant innovation',
+                title: 'The Modern Everyday Companion',
+                category: 'Accessible Utility / Everyday Essentials',
+                target_audience: audience || 'Everyday practical buyers',
+                core_problem: `High durability ${concept} is usually overpriced or inaccessible`,
+                differentiator: 'Engineered for seamless daily use at an accessible direct price point',
+                value_proposition: `Dependable, beautifully designed ${concept} for everyday life`,
+                competitive_angle: 'Bridges the gap between cheap disposability and luxury exclusivity',
+                strategic_rationale: 'Broad addressable market with high repeat referral potential',
+                potential_weakness: 'Requires tight operational supply-chain execution',
                 critic_findings: [],
               },
             ],
@@ -145,20 +176,22 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
             ],
           });
         }
-        if (isCustomIdea && userIdea) {
+        if (!isStudentApp && (concept || userIdea)) {
+          const effectiveConcept = concept || (userIdea ? userIdea.slice(0, 100) : 'lifestyle products');
+          const knownFacts = facts.length > 0 ? facts : [userIdea || `Business concept: ${effectiveConcept}`];
           return JSON.stringify({
-            core_problem: `Current market offerings fail to adequately address ${userIdea.slice(0, 100)}`,
-            target_audience: `Primary stakeholders and target customers seeking ${userIdea.slice(0, 80)}`,
-            context_situation: `Real-world operational environments requiring ${userIdea.slice(0, 60)}`,
-            user_goals: `Achieve reliable, high-quality outcomes with less friction and cost`,
-            constraints: 'Budget efficiency and seamless integration into daily workflow',
-            value_desired_outcome: `A dependable, high-satisfaction solution for ${userIdea.slice(0, 60)}`,
-            open_questions: ['What are the key adoption bottlenecks in the initial rollout?'],
-            known_facts: [userIdea],
+            core_problem: `Customers seeking ${effectiveConcept} encounter overpriced or low-quality alternatives without reliable craftsmanship`,
+            target_audience: audience || `Primary stakeholders and customers seeking ${effectiveConcept.slice(0, 80)}`,
+            context_situation: `Entering the market to deliver dedicated ${effectiveConcept.slice(0, 60)}`,
+            user_goals: `Establish a reputable, recognized brand in the market for ${effectiveConcept.slice(0, 60)}`,
+            constraints: 'Initial production scale and distribution channels to be established',
+            value_desired_outcome: `Authentic, reliable customer satisfaction and long-term brand loyalty`,
+            open_questions: ['What initial marketing channel will drive the most cost-effective customer acquisition?'],
+            known_facts: knownFacts,
             inferred_assumptions: [
               {
-                value: 'Target customers have strong unmet demand for a modern, purpose-built solution',
-                rationale: 'Inferred from user-provided business description and lack of direct substitutes',
+                value: 'Target customers prioritize direct transparency over generic corporate claims',
+                rationale: 'Inferred from early adopter dynamics for authentic products',
               },
             ],
           });
@@ -171,7 +204,7 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
           constraints: 'Academic honor codes and scheduling constraints',
           value_desired_outcome: 'Reliable collaboration and stronger project outcomes',
           open_questions: ['How will peer accountability be measured?'],
-          known_facts: ['Students attend classes together'],
+          known_facts: facts.length > 0 ? facts : ['Students attend classes together'],
           inferred_assumptions: [
             {
               value: 'Students value responsiveness over credentials',
@@ -207,27 +240,34 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
             critic_findings: [],
           });
         }
+        const proposedName = isStudentApp ? 'Koru' : 'AuraCraft';
         return JSON.stringify({
           naming_directions: [
             {
-              territory: 'Collaborative Growth',
-              proposed_name: 'Koru',
-              rationale: 'Symbolizes unfolding potential and collaborative beginnings',
-              relationship_to_audience: 'Resonates with students entering teamwork',
-              relationship_to_positioning: 'Directly supports academic matchmaking',
+              territory: isStudentApp ? 'Collaborative Growth' : 'Authentic Expression',
+              proposed_name: proposedName,
+              rationale: isStudentApp
+                ? 'Symbolizes unfolding potential and collaborative beginnings'
+                : 'Evokes natural craftsmanship, honesty, and enduring design',
+              relationship_to_audience: isStudentApp
+                ? 'Resonates with students entering teamwork'
+                : 'Appeals to customers who value thoughtful, authentic creation',
+              relationship_to_positioning: isStudentApp
+                ? 'Directly supports academic matchmaking'
+                : 'Anchors premium craftsmanship and reliable utility',
               potential_concern: 'May need pronunciation guide in international markets',
               critic_analysis: 'Distinctive and memorable without generic tech suffixes',
-              sharper_alternative: 'Consider Nexus as an alternative',
+              sharper_alternative: isStudentApp ? 'Consider Nexus as an alternative' : 'Consider Verve or Kora as alternatives',
             },
           ],
           personality_traits: [
-            { trait: 'Pragmatic', audience_justification: 'Students need immediate utility' },
-            { trait: 'Supportive', audience_justification: 'Reduces team stress' },
-            { trait: 'Direct', audience_justification: 'Cuts through group chat noise' },
+            { trait: 'Pragmatic', audience_justification: 'Customers need clear, immediate utility' },
+            { trait: 'Supportive', audience_justification: 'Builds lasting user trust and confidence' },
+            { trait: 'Direct', audience_justification: 'Communicates with transparency and focus' },
           ],
-          traits_to_avoid: ['Bureaucratic', 'Condescending'],
+          traits_to_avoid: ['Bureaucratic', 'Pretentious'],
           brand_principles: [
-            { principle: 'Peer-first accountability', rationale: 'Teams thrive on trust' },
+            { principle: 'Customer-first integrity', rationale: 'Long-term brand equity relies on trust' },
           ],
           critic_findings: [],
         });
@@ -248,14 +288,15 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
           });
         }
         return JSON.stringify({
-          tagline_options: [
-            'Find your team. Ship your project.',
-            'Better matches, better capstones.',
-          ],
-          one_line_pitch: 'Koru pairs university students with reliable project teammates based on verified skills and schedules.',
+          tagline_options: isStudentApp
+            ? ['Find your team. Ship your project.', 'Better matches, better capstones.']
+            : ['Thoughtfully crafted. Built to last.', 'Authentic design for everyday life.'],
+          one_line_pitch: isStudentApp
+            ? 'Koru pairs university students with reliable project teammates based on verified skills and schedules.'
+            : `Delivering thoughtfully designed ${concept || 'lifestyle products'} combining authentic quality with accessible pricing.`,
           rationale_per_tagline: [
             'Action-oriented benefit',
-            'Direct academic relevance',
+            'Direct audience relevance',
           ],
           critic_findings: [],
         });
@@ -277,16 +318,16 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
           });
         }
         return JSON.stringify({
-          logo_direction: 'Intersecting geometric loops suggesting peer collaboration',
-          color_mood: 'Focused indigo and energetic amber',
+          logo_direction: 'Clean modern wordmark with subtle geometric accent',
+          color_mood: 'Deep indigo and warm amber',
           hex_palette: ['#1E293B', '#4F46E5', '#F59E0B', '#F8FAFC'],
           type_roles: ['Headings: Space Grotesk', 'Body: Inter'],
           shape_language: 'Clean rectilinear cards with rounded corners',
           symbol_language: 'Interconnected nodes and paths',
           composition_layout: 'Generous whitespace with structured grid',
-          imagery_direction: 'Authentic student project teamwork moments',
-          concepts_to_avoid: ['Stock handshakes', 'Graduation cap icons'],
-          rationale_linking_to_audience_and_positioning: 'Technical credibility for engineering and student projects',
+          imagery_direction: 'Authentic lifestyle and product context moments',
+          concepts_to_avoid: ['Stock handshakes', 'Generic clipart icons'],
+          rationale_linking_to_audience_and_positioning: 'Technical credibility and contemporary aesthetic alignment',
           concept_disclaimer: 'AI-generated visual concept / design direction — not production-ready artwork.',
         });
       }
@@ -306,14 +347,14 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
           });
         }
         return JSON.stringify({
-          voice_description: 'Direct, encouraging, and student-native',
+          voice_description: 'Direct, encouraging, and authentic',
           tone_characteristics: ['Pragmatic', 'Approachable', 'Honest'],
-          do_list: ['Be direct', 'Speak to the student friction'],
+          do_list: ['Be direct', 'Focus on real customer value'],
           dont_list: ['Do not use corporate jargon', 'Do not overpromise'],
           sample_messages: [
-            { message: 'Find your project team in minutes.', explanation: 'Homepage hero' },
-            { message: 'Matched with 2 peers for your CS capstone.', explanation: 'Notification' },
-            { message: 'Lock in your team charter.', explanation: 'Onboarding step' },
+            { message: isStudentApp ? 'Find your project team in minutes.' : 'Crafted with intention. Designed for your everyday.', explanation: 'Homepage hero' },
+            { message: isStudentApp ? 'Matched with 2 peers for your CS capstone.' : 'Your order has shipped with care.', explanation: 'Notification' },
+            { message: isStudentApp ? 'Lock in your team charter.' : 'Join our community of conscious creators.', explanation: 'Onboarding step' },
           ],
           critic_findings: [],
         });
@@ -327,8 +368,12 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
           });
         }
         return JSON.stringify({
-          landing_headline: 'Form your capstone team without the group chat drama.',
-          social_launch_post: 'Tired of random team assignments? Koru matches you with verified teammates for your semester project.',
+          landing_headline: isStudentApp
+            ? 'Form your capstone team without the group chat drama.'
+            : `The new standard in ${concept || 'everyday essentials'}.`,
+          social_launch_post: isStudentApp
+            ? 'Tired of random team assignments? Koru matches you with verified teammates for your semester project.'
+            : `We are officially live! Discover authentic, dependable ${concept || 'craftsmanship'} crafted for you.`,
           critic_findings: [],
         });
       }

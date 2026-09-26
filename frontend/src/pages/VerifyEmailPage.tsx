@@ -35,6 +35,7 @@ export function VerifyEmailPage() {
 
   // Check if current user is already confirmed or just got confirmed via callback token
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
     if (user && isUserEmailConfirmed(user)) {
       setIsVerified(true);
       return;
@@ -76,6 +77,7 @@ export function VerifyEmailPage() {
         }
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Cooldown countdown timer

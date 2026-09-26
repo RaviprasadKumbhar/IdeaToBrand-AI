@@ -20,6 +20,7 @@ import type {
 import { affectedFields } from '../../../shared/dependency-map';
 import { transition } from '../../../shared/src/store/approvalStateMachine';
 import type { ApprovalEvent } from '../../../shared/src/types/index';
+import type { WorkspaceProjectData } from '../lib/supabase-workspace';
 import {
   saveProjectToDb,
   fetchUserProjects,
@@ -147,6 +148,9 @@ export interface FOILStore {
 
   // Session reset (new project)
   resetProject: () => void;
+
+  // Project persistence loader (Phase 6)
+  loadProjectIntoStore: (project: WorkspaceProjectData) => void;
 }
 
 // ─── Autosave helpers ─────────────────────────────────────────────────────────
@@ -377,6 +381,15 @@ export const useFOILStore = create<FOILStore>((set, get) => {
         return { ctx: updatedCtx };
       });
       triggerAutosave(get);
+    },
+
+    loadProjectIntoStore: (project) => {
+      set({
+        ctx: project.context,
+        uiStates: project.ui_states || createInitialUIStates(),
+        currentStage: project.current_stage || 'discovery',
+      });
+      persistToSession(project.context);
     },
 
     addScenarioOverride: (override) => {

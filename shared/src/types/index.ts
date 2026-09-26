@@ -204,15 +204,82 @@ export interface ExportBundle {
   failure_reason?: string;
 }
 
+/* Fact Tracking & Provenance (Phase 2 & Phase 6) */
+export type FactConfidence =
+  | 'user_provided_fact'
+  | 'user_confirmed_fact'
+  | 'ai_hypothesis'
+  | 'unknown';
+
+export type FactCategory =
+  | 'concept'
+  | 'problem'
+  | 'audience'
+  | 'product_service'
+  | 'differentiation'
+  | 'location_market'
+  | 'budget_constraints'
+  | 'goals';
+
+export interface FactItem {
+  id: string;
+  category: FactCategory;
+  label: string;
+  text: string;
+  confidence: FactConfidence;
+  source?: string;
+  confirmed_at?: string;
+}
+
+export type InterviewState =
+  | 'COLLECTING'
+  | 'CLARIFYING'
+  | 'READY_FOR_DISCOVERY'
+  | 'DISCOVERY_DRAFT'
+  | 'USER_REVIEW'
+  | 'APPROVED'
+  | 'NEXT_GATE';
+
+export interface InterviewQuestion {
+  id: string;
+  question: string;
+  reason: string;
+  options?: string[];
+  targetCategory: FactCategory;
+  allowsUnknown?: boolean;
+}
+
+export interface ReadinessAssessment {
+  isReady: boolean;
+  missingCritical: string[];
+  conceptSummary?: string;
+  score: number;
+  nextQuestion?: InterviewQuestion;
+}
+
+export interface InterviewResponse {
+  state: InterviewState;
+  message: string;
+  question?: InterviewQuestion;
+  readiness: ReadinessAssessment;
+  extractedFacts: FactItem[];
+  discoveryDraft?: DiscoveryContent;
+}
+
 /* Stage-specific data interfaces */
 
 export interface DiscoveryContent {
+  brand_concept?: string;
   core_problem: string;
+  proposed_solution?: string;
   target_audience: string;
   context_situation: string;
   user_goals: string;
   constraints: string;
   value_desired_outcome: string;
+  differentiation?: string;
+  brand_goals?: string;
+  customer_needs?: string[];
   open_questions: string[];
   known_facts: string[];
   inferred_assumptions: Array<{ value: string; rationale: string }>;

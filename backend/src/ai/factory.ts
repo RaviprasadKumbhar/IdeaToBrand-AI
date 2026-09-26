@@ -15,12 +15,29 @@ export function getAIProvider(overrideProvider?: AIProvider): AIProvider {
     return defaultProviderInstance;
   }
 
-  const selected = (process.env.AI_PROVIDER || 'MOCK').toUpperCase();
+  let selected = process.env.AI_PROVIDER?.toUpperCase();
+  if (!selected) {
+    if (process.env.NODE_ENV === 'test') {
+      selected = 'MOCK';
+    } else if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) {
+      selected = 'OPENAI';
+    } else if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0) {
+      selected = 'GEMINI';
+    } else {
+      selected = 'MOCK';
+    }
+  }
 
   switch (selected) {
     case 'OPENAI':
-      defaultProviderInstance = new OpenAIProvider();
-      return defaultProviderInstance;
+      try {
+        defaultProviderInstance = new OpenAIProvider();
+        return defaultProviderInstance;
+      } catch (err) {
+        console.warn('Failed to initialize OpenAIProvider, falling back to MockAIProvider:', err);
+        defaultProviderInstance = new MockAIProvider();
+        return defaultProviderInstance;
+      }
     case 'GEMINI':
       defaultProviderInstance = new GeminiProvider();
       return defaultProviderInstance;

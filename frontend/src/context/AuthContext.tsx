@@ -22,6 +22,7 @@ import { classifyAuthError, AuthFriendlyError } from '../lib/authErrors';
 // oxlint-disable-next-line react/only-export-components
 export { useAuth } from './useAuth';
 
+// oxlint-disable-next-line react/only-export-components
 export function isUserEmailConfirmed(user: User | null | undefined): boolean {
   if (!user) return false;
   return Boolean(user.email_confirmed_at || user.confirmed_at);
