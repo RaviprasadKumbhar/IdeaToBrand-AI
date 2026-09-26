@@ -10,6 +10,7 @@ import { VoiceMessagingStage } from './stages/voice-messaging/VoiceMessagingStag
 import { LaunchPrepStage } from './stages/launch-prep/LaunchPrepStage';
 import { ConsistencyAuditStage } from './stages/consistency-audit/ConsistencyAuditStage';
 import { KitExportStage } from './stages/kit-export/KitExportStage';
+import { ScenarioProbePage } from './stages/scenario-probe/ScenarioProbePage';
 
 function NotFound() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/voice-messaging"     element={<VoiceMessagingStage />} />
           <Route path="/launch-prep"         element={<LaunchPrepStage />} />
           <Route path="/consistency-audit"   element={<ConsistencyAuditStage />} />
+          <Route path="/scenario-probe"      element={<ScenarioProbePage />} />
           <Route path="/export"              element={<KitExportStage />} />
           <Route path="*"                    element={<NotFound />} />
         </Routes>

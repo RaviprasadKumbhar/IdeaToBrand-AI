@@ -124,6 +124,10 @@ export interface FOILStore {
   setConsistencyFindings: (findings: ConsistencyFinding[]) => void;
   actOnConsistencyFinding: (id: string, action: ConsistencyFinding['user_action']) => void;
 
+  // Scenario overrides (T-030)
+  addScenarioOverride: (override: import('../../../shared/types').ScenarioOverride) => void;
+  resolveScenarioOverride: (overrideId: string, decision: NonNullable<import('../../../shared/types').ScenarioOverride['decision']>) => void;
+
   // Session reset (new project)
   resetProject: () => void;
 }
@@ -332,6 +336,30 @@ export const useFOILStore = create<FOILStore>((set, get) => {
     resetProject: () => {
       sessionStorage.removeItem(SESSION_KEY);
       set({ ctx: createInitialContext(), uiStates: createInitialUIStates(), ideaInput: null, currentStage: 'idea-input' });
+    },
+
+    addScenarioOverride: (override) => {
+      set((state) => {
+        const updatedCtx: SharedContext = {
+          ...state.ctx,
+          scenario_overrides: [...state.ctx.scenario_overrides, override],
+        };
+        persistToSession(updatedCtx);
+        return { ctx: updatedCtx };
+      });
+    },
+
+    resolveScenarioOverride: (overrideId, decision) => {
+      set((state) => {
+        const updatedCtx: SharedContext = {
+          ...state.ctx,
+          scenario_overrides: state.ctx.scenario_overrides.map((o) =>
+            o.id === overrideId ? { ...o, decision } : o
+          ),
+        };
+        persistToSession(updatedCtx);
+        return { ctx: updatedCtx };
+      });
     },
   };
 });

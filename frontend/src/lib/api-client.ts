@@ -64,6 +64,75 @@ export async function assembleExport(
   };
 }
 
+export interface ScenarioBranchField {
+  stage: StageName;
+  field_name: string;
+  original_value: string;
+  branch_value: string;
+}
+
+export interface ScenarioProbeResult {
+  scenario_id: string;
+  what_if_input: string;
+  triggered_from_stage: StageName;
+  affected_stages: StageName[];
+  changed_fields: ScenarioBranchField[];
+  branch_critic_findings: import('../../../shared/types').CriticFinding[];
+}
+
+/**
+ * [MOCK] Simulate Scenario Probe — returns an isolated branch with original-vs-branch
+ * values and Critic findings. Does NOT overwrite the original.
+ * Replace with POST /api/scenario-probe when T-029 backend is available.
+ */
+export async function runScenarioProbe(
+  triggeredFrom: StageName,
+  whatIfInput: string,
+  _approvedDecisions: Record<string, unknown>
+): Promise<ScenarioProbeResult & MockFlag> {
+  await delay(2000 + Math.random() * 1000);
+  return {
+    isMock: true,
+    note: '[MOCK ADAPTER] — Replace with real POST /api/scenario-probe when T-029 backend is available.',
+    scenario_id: uuid(),
+    what_if_input: whatIfInput,
+    triggered_from_stage: triggeredFrom,
+    affected_stages: ['positioning', 'naming_personality', 'tagline_pitch'] as StageName[],
+    changed_fields: [
+      {
+        stage: 'positioning',
+        field_name: 'target_audience',
+        original_value: 'University students (18–26) in project-based coursework',
+        branch_value: 'Graduate students (22–28) in research-oriented programmes',
+      },
+      {
+        stage: 'naming_personality',
+        field_name: 'proposed_name',
+        original_value: 'Koru',
+        branch_value: 'ResearchNest',
+      },
+      {
+        stage: 'tagline_pitch',
+        field_name: 'one_line_pitch',
+        original_value: 'Koru matches university students with the right collaborators for every project.',
+        branch_value: 'ResearchNest connects graduate researchers with the collaborators their work demands.',
+      },
+    ],
+    branch_critic_findings: [
+      {
+        id: uuid(),
+        stage: 'naming_personality',
+        target_field: 'proposed_name',
+        issue_type: 'vague',
+        evidence: '"ResearchNest" may limit the brand to academic research rather than collaborative projects broadly.',
+        explanation: 'The name shifts target audience but narrows market scope more aggressively than the original.',
+        sharper_alternative: 'Consider "Nexis" — connection-focused, not field-specific, preserves graduate audience without over-narrowing.',
+        user_action: null,
+      },
+    ],
+  };
+}
+
 // ─── Real API client (for when backend is available) ─────────────────────────
 
 export async function realGenerateStage(
