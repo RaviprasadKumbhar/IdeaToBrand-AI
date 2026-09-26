@@ -53,7 +53,7 @@ export function assembleBrandKit(
   const activeName =
     typeof naming.selected_name === "string"
       ? naming.selected_name
-      : naming.selected_name?.proposed_name || naming.proposed_name || "Brand";
+      : naming.selected_name?.proposed_name || naming.proposed_name || naming.naming_directions?.[0]?.proposed_name || "Brand";
 
   const activeNameDirection =
     typeof naming.selected_name === "object"

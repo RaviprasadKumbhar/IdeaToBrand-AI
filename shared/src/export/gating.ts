@@ -134,7 +134,7 @@ export function validateExportEligibility(
   const brandName =
     typeof naming.selected_name === "string"
       ? naming.selected_name
-      : naming.selected_name?.proposed_name || naming.proposed_name || "";
+      : naming.selected_name?.proposed_name || naming.proposed_name || naming.naming_directions?.[0]?.proposed_name || "";
   if (!brandName.trim()) {
     return {
       eligible: false,

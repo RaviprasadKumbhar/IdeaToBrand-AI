@@ -18,6 +18,7 @@ export function createInitialSharedContext(projectId: string = `foil_${Date.now(
     approved_decisions: {},
     stage_drafts: {},
     critic_findings: [],
+    consistency_findings: [],
     scenario_overrides: [],
     revision_log: [],
   };

@@ -137,6 +137,52 @@ describe("T-037: Backend Integration API Endpoints", () => {
     expect(res.json.content).toContain("## 6. Visual Brief");
   });
 
+  it("POST /api/stages/discovery/generate returns 200 with structured discovery content", async () => {
+    const res = await testRequest("POST", "/api/stages/discovery/generate", {
+      idea_text: "A collaborative workspace tool for student engineering capstone teams.",
+      known_facts: ["Target audience is collegiate engineering students"],
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.json.content).toBeDefined();
+    expect(res.json.content.core_problem).toBeDefined();
+    expect(res.json.content.target_audience).toBeDefined();
+    expect(Array.isArray(res.json.findings)).toBe(true);
+  });
+
+  it("POST /api/stages/positioning/generate returns 422 if upstream discovery dependency is missing", async () => {
+    const res = await testRequest("POST", "/api/stages/positioning/generate", {
+      approved_decisions: {},
+    });
+
+    expect(res.status).toBe(422);
+    expect(res.json.error_type).toBe("schema_validation_failed");
+    expect(res.json.message).toContain("Discovery");
+  });
+
+  it("POST /api/audit/holistic returns 200 with consistency findings array", async () => {
+    const res = await testRequest("POST", "/api/audit/holistic", {
+      approved_decisions: {},
+    });
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.json.findings)).toBe(true);
+  });
+
+  it("POST /api/scenario-probe returns 200 with isolated branch comparison data", async () => {
+    const res = await testRequest("POST", "/api/scenario-probe", {
+      triggered_from_stage: "positioning",
+      what_if_input: "What if we target high school robotics teams instead?",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.json.scenario_id).toBeDefined();
+    expect(res.json.what_if_input).toBe("What if we target high school robotics teams instead?");
+    expect(res.json.triggered_from_stage).toBe("positioning");
+    expect(Array.isArray(res.json.affected_stages)).toBe(true);
+    expect(Array.isArray(res.json.changed_fields)).toBe(true);
+  });
+
   it("POST /api/scenario-probe/keep marks decision as keep_original and leaves approved_decisions untouched", async () => {
     let ctx = createInitialSharedContext("scenario_api_test");
     ctx = writeApprovedDecision(ctx, "discovery", { problem: "Original Problem" }, "strategist_approved", "init");
@@ -267,3 +313,4 @@ describe("T-037: Backend Integration API Endpoints", () => {
     expect(res.json.updatedContext.revision_log[1].cause).toBe("consistency_finding_accept");
   });
 });
+

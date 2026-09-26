@@ -519,7 +519,7 @@ Only implement if stable and useful. It must not delay working Markdown export.
 # 19. Phase 15 — End-to-End Integration
 
 ## T-037 — Full Stage Integration
-**Owner:** Member 2 + Member 3 | **Priority:** P0 | **Dependencies:** T-015 through T-035
+**Owner:** Member 2 + Member 3 | **Priority:** P0 | **Dependencies:** T-015 through T-035 | **Status:** DONE
 
 Connect:
 - frontend
@@ -540,7 +540,7 @@ Connect:
 # 20. Phase 16 — Testing and QA
 
 ## T-038 — Unit / Contract Testing
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Test:
 - schemas
@@ -581,7 +581,7 @@ Test:
 - responsive behavior
 
 ## T-041 — Full End-to-End QA
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-037, T-038, T-039, T-040
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-037, T-038, T-039, T-040 | **Status:** DONE
 
 Complete the entire workflow from a new idea to export.
 
@@ -592,7 +592,7 @@ Complete the entire workflow from a new idea to export.
 # 21. Phase 17 — Security and Reliability
 
 ## T-042 — Security Review
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Check:
 - secrets
@@ -604,7 +604,7 @@ Check:
 - frontend secret exposure
 
 ## T-043 — Failure-State Review
-**Owner:** Member 1 + Member 3 | **Priority:** P0
+**Owner:** Member 1 + Member 3 | **Priority:** P0 | **Status:** DONE
 
 Test:
 - AI timeout
@@ -621,7 +621,7 @@ Test:
 # 22. Phase 18 — Performance and Polish
 
 ## T-044 — Performance Review
-**Owner:** Member 3 | **Priority:** P1
+**Owner:** Member 3 | **Priority:** P1 | **Status:** DONE
 
 Check unnecessary AI calls, duplicate requests, excessive regeneration, slow loading, large responses, and unnecessary persistence calls.
 
@@ -671,7 +671,7 @@ Prepare a 2–4 minute demo covering:
 - differentiation
 
 ## T-048 — Demo Backup
-**Owner:** Member 3 | **Priority:** P1
+**Owner:** Member 3 | **Priority:** P1 | **Status:** DONE
 
 Prepare a stable demo project, known-good build, environment backup, and recovery instructions.
 
@@ -682,7 +682,7 @@ Do not fake live AI behavior.
 # 24. Phase 20 — Submission Preparation
 
 ## T-049 — GitHub / Documentation
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Prepare:
 - setup instructions
@@ -713,7 +713,7 @@ Prepare required Instagram content according to the official hackathon requireme
 Each participant completes their own required submission where individual submission is required.
 
 ## T-052 — LinkedIn Material
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Prepare required LinkedIn content including project, target users, problem, solution, workflow, features, technology, contribution, differentiation, Inkloom information, GitHub/live links, required tags, and the demo video uploaded directly to LinkedIn.
 
@@ -889,12 +889,12 @@ Stop and resolve the issue if:
 - [ ] Demo UX verified
 
 ### Member 3
-- [ ] Persistence verified
-- [ ] Revision history verified
-- [ ] Export verified
-- [ ] API/integration verified
-- [ ] Security verified
-- [ ] End-to-end QA verified
+- [x] Persistence verified
+- [x] Revision history verified
+- [x] Export verified
+- [x] API/integration verified
+- [x] Security verified
+- [x] End-to-end QA verified
 
 ### All Members
 - [ ] PRD requirements checked

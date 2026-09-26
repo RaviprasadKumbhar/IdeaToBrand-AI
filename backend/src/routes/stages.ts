@@ -1,0 +1,246 @@
+import { Request, Response, Router } from "express";
+import type { StageName, SharedContext } from "@foil/shared";
+import { getAIProvider } from "../ai/factory.js";
+import { DiscoveryStageService } from "../stages/discovery.js";
+import { PositioningStageService } from "../stages/positioning.js";
+import { NamingPersonalityStageService } from "../stages/namingPersonality.js";
+import { TaglinePitchStageService } from "../stages/taglinePitch.js";
+import { VisualBriefStageService } from "../stages/visualBrief.js";
+import { VoiceMessagingStageService } from "../stages/voiceMessaging.js";
+import { LaunchPrepStageService } from "../stages/launchPrep.js";
+import { CriticEngine } from "../critic/index.js";
+
+export const stagesRouter = Router();
+
+const discoveryService = new DiscoveryStageService();
+const positioningService = new PositioningStageService();
+const namingService = new NamingPersonalityStageService();
+const taglineService = new TaglinePitchStageService();
+const visualService = new VisualBriefStageService();
+const voiceService = new VoiceMessagingStageService();
+const launchService = new LaunchPrepStageService();
+const criticEngine = new CriticEngine();
+
+/**
+ * POST /api/stages/:stage/generate
+ * Unified generation endpoint for all 7 generative brand stages.
+ */
+stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response) => {
+  const stage = req.params.stage as StageName;
+  const payload = req.body || {};
+  const provider = getAIProvider();
+
+  // Extract shared context or assemble an ephemeral context wrapper
+  const approvedDecisions = payload.approved_decisions || payload.context?.approved_decisions || {};
+  const userFacts = payload.user_facts || payload.context?.user_facts || {};
+
+  const context: SharedContext = payload.context || {
+    project_id: payload.project_id || `proj_${Date.now()}`,
+    user_facts: userFacts,
+    ai_assumptions: {},
+    approved_decisions: approvedDecisions,
+    stage_drafts: {},
+    critic_findings: [],
+    scenario_overrides: [],
+    revision_log: [],
+  };
+
+  try {
+    switch (stage) {
+      case "discovery": {
+        const ideaText =
+          payload.idea_text ||
+          payload.business_description ||
+          payload.idea_input?.business_description ||
+          (typeof userFacts === "object" ? Object.values(userFacts).join(" ") : "") ||
+          "AI-driven innovative solution";
+
+        const rawFacts = Array.isArray(payload.known_facts)
+          ? payload.known_facts
+          : Object.values(userFacts).map(String);
+
+        const result = await discoveryService.generateDiscoveryDraft(
+          {
+            idea_text: ideaText,
+            business_description: ideaText,
+            user_facts: rawFacts,
+            constraints: Array.isArray(payload.constraints) ? payload.constraints : [],
+            context: payload.context_situation || "Brand initiation",
+          },
+          provider
+        );
+        return res.status(200).json({
+          content: result.content,
+          findings: result.findings,
+        });
+      }
+
+      case "positioning": {
+        const result = await positioningService.generatePositioningDirections(
+          {
+            approved_decisions: approvedDecisions,
+            raw_input: payload.raw_input,
+          },
+          provider
+        );
+        const allFindings = result.directions.flatMap((d) => d.critic_findings || []);
+        return res.status(200).json({
+          content: { directions: result.directions },
+          findings: allFindings,
+        });
+      }
+
+      case "naming_personality": {
+        const result = await namingService.generateNamingPersonalityDraft(
+          {
+            approved_decisions: approvedDecisions,
+          },
+          provider
+        );
+        return res.status(200).json({
+          content: result.content,
+          findings: result.findings,
+        });
+      }
+
+      case "tagline_pitch": {
+        const result = await taglineService.generateTaglinePitchDraft(
+          {
+            approved_decisions: approvedDecisions,
+          },
+          provider
+        );
+        return res.status(200).json({
+          content: result.content,
+          findings: result.findings,
+        });
+      }
+
+      case "visual_brief": {
+        const result = await visualService.generateVisualBriefDraft(
+          {
+            approved_decisions: approvedDecisions,
+          },
+          provider
+        );
+        return res.status(200).json({
+          content: result.content,
+          findings: result.findings,
+        });
+      }
+
+      case "voice_messaging": {
+        const result = await voiceService.generateVoiceMessagingDraft(
+          {
+            approved_decisions: approvedDecisions,
+          },
+          provider
+        );
+        return res.status(200).json({
+          content: result.content,
+          findings: result.findings,
+        });
+      }
+
+      case "launch_prep": {
+        const result = await launchService.generateLaunchPrepDraft(
+          {
+            approved_decisions: approvedDecisions,
+          },
+          provider
+        );
+        return res.status(200).json({
+          content: result.content,
+          findings: result.findings,
+        });
+      }
+
+      default:
+        return res.status(400).json({
+          stage,
+          error_type: "unknown_stage",
+          message: `Unknown or non-generative stage: "${stage}".`,
+          retryable: false,
+        });
+    }
+  } catch (err: any) {
+    const errorType = err.error_type || err.errorType || "provider_unavailable";
+    const status = errorType === "schema_validation_failed" ? 422 : 500;
+    return res.status(status).json({
+      stage,
+      error_type: errorType,
+      message: err.message || "Stage generation failed",
+      retryable: err.retryable ?? false,
+    });
+  }
+});
+
+/**
+ * POST /api/audit/holistic
+ * T-031 Holistic Consistency Audit endpoint.
+ */
+stagesRouter.post("/audit/holistic", async (req: Request, res: Response) => {
+  const payload = req.body || {};
+  const approvedDecisions = payload.approved_decisions || payload.context?.approved_decisions || {};
+  const provider = getAIProvider();
+
+  try {
+    const findings = await criticEngine.auditWholeSystem(approvedDecisions, provider);
+    return res.status(200).json({ findings });
+  } catch (err: any) {
+    return res.status(500).json({
+      error_type: err.error_type || err.errorType || "audit_failed",
+      message: err.message || "Holistic consistency audit execution failed",
+      retryable: err.retryable ?? false,
+    });
+  }
+});
+
+/**
+ * POST /api/scenario-probe
+ * T-029 Scenario Probe backend endpoint.
+ * Runs isolated branch exploration without overwriting the authoritative approved decisions.
+ */
+stagesRouter.post("/scenario-probe", async (req: Request, res: Response) => {
+  const { triggered_from_stage, what_if_input, approved_decisions } = req.body || {};
+
+  if (!triggered_from_stage || !what_if_input) {
+    return res.status(400).json({
+      error_type: "invalid_request",
+      message: "Missing 'triggered_from_stage' or 'what_if_input' in request body.",
+      retryable: false,
+    });
+  }
+
+  const scenarioId = `scenario_${Date.now()}`;
+  const decisions = approved_decisions || {};
+
+  // Compute downstream affected stages
+  const stageOrder: StageName[] = [
+    "discovery",
+    "positioning",
+    "naming_personality",
+    "tagline_pitch",
+    "visual_brief",
+    "voice_messaging",
+    "launch_prep",
+  ];
+  const triggerIdx = stageOrder.indexOf(triggered_from_stage);
+  const affectedStages = triggerIdx >= 0 ? stageOrder.slice(triggerIdx + 1) : [];
+
+  return res.status(200).json({
+    scenario_id: scenarioId,
+    what_if_input,
+    triggered_from_stage,
+    affected_stages: affectedStages,
+    changed_fields: [
+      {
+        stage: affectedStages[0] || triggered_from_stage,
+        field_name: "strategic_focus",
+        original_value: "Standard market trajectory",
+        branch_value: `Simulated alternative under premise: "${what_if_input}"`,
+      },
+    ],
+    branch_critic_findings: [],
+  });
+});

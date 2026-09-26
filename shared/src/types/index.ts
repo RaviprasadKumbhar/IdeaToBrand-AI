@@ -121,8 +121,16 @@ export interface SharedContext {
   approved_decisions: Partial<Record<StageName, ApprovedDecision>>;
   stage_drafts: Partial<Record<StageName, StageDraft>>;
   critic_findings: CriticFinding[];
+  consistency_findings?: ConsistencyFinding[];
   scenario_overrides: ScenarioOverride[];
   revision_log: RevisionLogEntry[];
+}
+
+export interface IdeaInput {
+  business_description: string;
+  target_audience?: string;
+  category?: string;
+  constraints?: string;
 }
 
 export interface Project {
