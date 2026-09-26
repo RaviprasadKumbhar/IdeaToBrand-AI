@@ -3,7 +3,7 @@
  * Tests: validation, accessible labels, input preservation, user-fact labeling.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { IdeaInput } from '../stages/idea-input/IdeaInput';

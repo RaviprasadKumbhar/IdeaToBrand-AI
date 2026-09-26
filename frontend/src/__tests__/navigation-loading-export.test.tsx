@@ -669,13 +669,13 @@ describe('T-040 AppShell navigation', () => {
     resetStore();
   });
 
-  it('renders the FOIL logo button', () => {
+  it('renders the application logo button', () => {
     renderWithRouter(
       <AppShell>
         <p>content</p>
       </AppShell>
     );
-    expect(screen.getByRole('button', { name: /FOIL.*go to home/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /(IdeaToBrand|FOIL).*go to home/i })).toBeInTheDocument();
   });
 
   it('renders stage navigation with all stages', () => {
