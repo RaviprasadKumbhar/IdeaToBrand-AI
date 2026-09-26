@@ -45,7 +45,7 @@ export async function signOutUser(): Promise<{ error: AuthError | Error | null }
 
 export async function resetPasswordForEmail(email: string): Promise<{ error: AuthError | Error | null }> {
   if (!isSupabaseConfigured) {
-    return { error: new Error('Supabase environment not configured. Please supply VITE_SUPABASE_ANON_KEY.') };
+    return { error: new Error('Authentication service is temporarily unavailable. Please try again later.') };
   }
   const redirectUrl = `${window.location.origin}/reset-password`;
   const { error } = await supabase.auth.resetPasswordForEmail(email, {

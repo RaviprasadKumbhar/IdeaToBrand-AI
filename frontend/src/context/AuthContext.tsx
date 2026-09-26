@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       return {
         error: new Error(
-          'Supabase environment is not configured. Please supply VITE_SUPABASE_ANON_KEY.'
+          'Authentication service is temporarily unavailable. Please verify your connection or try again later.'
         ),
       };
     }
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       return {
         error: new Error(
-          'Supabase environment is not configured. Please supply VITE_SUPABASE_ANON_KEY.'
+          'Authentication service is temporarily unavailable. Please verify your connection or try again later.'
         ),
       };
     }

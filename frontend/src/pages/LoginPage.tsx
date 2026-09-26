@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, isConfigured } = useAuth();
+  const { signIn } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,17 +65,6 @@ export function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="card bg-white p-7 border-border shadow-card">
-          {!isConfigured && (
-            <div className="mb-5 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 space-y-1">
-              <p className="font-bold flex items-center gap-1.5">
-                <span>ℹ</span> Supabase Environment Configuration
-              </p>
-              <p>
-                <code className="bg-amber-100/60 px-1 py-0.5 rounded text-[11px]">VITE_SUPABASE_ANON_KEY</code> is required to authenticate against the live Supabase project.
-              </p>
-            </div>
-          )}
-
           {error && (
             <div role="alert" className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
               <span className="font-bold text-red-500">✕</span>

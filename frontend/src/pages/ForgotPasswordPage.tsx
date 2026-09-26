@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export function ForgotPasswordPage() {
-  const { resetPassword, isConfigured } = useAuth();
+  const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,12 +58,6 @@ export function ForgotPasswordPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="card bg-white p-7 border-border shadow-card">
-          {!isConfigured && (
-            <div className="mb-5 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
-              <code className="bg-amber-100/60 px-1 py-0.5 rounded text-[11px]">VITE_SUPABASE_ANON_KEY</code> is required to dispatch real password recovery emails.
-            </div>
-          )}
-
           {error && (
             <div role="alert" className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
               <span className="font-bold text-red-500">✕</span>
