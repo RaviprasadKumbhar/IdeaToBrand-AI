@@ -83,6 +83,21 @@ export interface ScenarioOverride {
   created_at: string;
 }
 
+export interface ScenarioComparisonItem {
+  stage: StageName;
+  original_content: Record<string, unknown> | null;
+  original_state: ApprovalState | null;
+  branch_draft: StageDraft;
+  critic_findings: CriticFinding[];
+  has_changes: boolean;
+}
+
+export interface ScenarioProbeResult {
+  scenario_override: ScenarioOverride;
+  comparisons: ScenarioComparisonItem[];
+  updated_context: SharedContext;
+}
+
 export type RevisionLogCause =
   | "user_edit"
   | "consistency_finding_accept"

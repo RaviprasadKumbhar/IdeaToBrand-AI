@@ -6,6 +6,14 @@ export interface StagePromptBuilder {
   buildPrompt: (input: StageInput) => string;
 }
 
+function formatScenarioContext(scenarioOverride?: StageInput['scenario_override']): string {
+  if (!scenarioOverride) return '';
+  return `\n\nSCENARIO PROBE OVERRIDE ("WHAT-IF" REOPENING):
+Triggered from stage: ${scenarioOverride.triggered_from_stage}
+What-If Condition: "${scenarioOverride.what_if_input}"
+Instruction: Adapt this stage's recommendations to specifically address this what-if scenario override while keeping un-overridden upstream context intact.\n`;
+}
+
 export const STRATEGIST_PROMPT_BUILDERS: Record<StageName, StagePromptBuilder> = {
   discovery: {
     stage: 'discovery',
@@ -22,7 +30,7 @@ HARD RULES:
 4. Output valid JSON strictly adhering to the DiscoverySchema.
 
 User's Raw Idea:
-"${rawIdea}"
+"${rawIdea}"${formatScenarioContext(input.scenario_override)}
 
 Respond with a JSON object containing:
 - core_problem (string)
@@ -52,7 +60,7 @@ HARD RULES:
 4. Output valid JSON matching the PositioningSchema.
 
 Approved Discovery Context:
-${JSON.stringify(discovery, null, 2)}
+${JSON.stringify(discovery, null, 2)}${formatScenarioContext(input.scenario_override)}
 
 Respond with a JSON object containing:
 - directions: array of at least 2 objects, each containing:
@@ -83,7 +91,7 @@ HARD RULES:
 4. Output valid JSON matching the NamingPersonalitySchema.
 
 Approved Positioning Context:
-${JSON.stringify(positioning, null, 2)}
+${JSON.stringify(positioning, null, 2)}${formatScenarioContext(input.scenario_override)}
 
 Respond with a JSON object containing:
 - naming_directions: array of objects with territory, proposed_name, rationale, relationship_to_audience, relationship_to_positioning, potential_concern, critic_analysis, sharper_alternative
@@ -108,7 +116,7 @@ HARD RULES:
 4. Output valid JSON matching the TaglinePitchSchema.
 
 Approved Naming & Personality Context:
-${JSON.stringify(naming, null, 2)}
+${JSON.stringify(naming, null, 2)}${formatScenarioContext(input.scenario_override)}
 
 Respond with a JSON object containing:
 - tagline_options: string[]
@@ -133,7 +141,7 @@ HARD RULES:
 
 Approved Upstream Context:
 Positioning: ${JSON.stringify(positioning, null, 2)}
-Naming & Personality: ${JSON.stringify(naming, null, 2)}
+Naming & Personality: ${JSON.stringify(naming, null, 2)}${formatScenarioContext(input.scenario_override)}
 
 Respond with a JSON object containing:
 - logo_direction (string)
@@ -164,7 +172,7 @@ HARD RULES:
 4. Output valid JSON matching the VoiceMessagingSchema.
 
 Approved Naming & Personality Context:
-${JSON.stringify(naming, null, 2)}
+${JSON.stringify(naming, null, 2)}${formatScenarioContext(input.scenario_override)}
 
 Respond with a JSON object containing:
 - voice_description (string)
@@ -192,7 +200,7 @@ HARD RULES:
 Approved Context:
 Positioning: ${JSON.stringify(positioning, null, 2)}
 Naming: ${JSON.stringify(naming, null, 2)}
-Voice: ${JSON.stringify(voice, null, 2)}
+Voice: ${JSON.stringify(voice, null, 2)}${formatScenarioContext(input.scenario_override)}
 
 Respond with a JSON object containing:
 - landing_headline (string)

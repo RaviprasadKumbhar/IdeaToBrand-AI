@@ -1,4 +1,4 @@
-import type { StageName } from "./types/index.js";
+import type { StageName, SharedContext } from "./types/index.js";
 
 /**
  * Authoritative lookup table for downstream stage dependencies.
@@ -76,4 +76,51 @@ export function getAffectedDownstreamStages(stage: StageName): StageName[] {
   }
 
   return Array.from(visited);
+}
+
+/**
+ * T-028 Dependency Engine:
+ * When an upstream approved field changes, identify relevant downstream fields and mark them
+ * 'needs_review' in approved_decisions.
+ *
+ * Invariants enforced:
+ * 1. Only affected downstream fields are marked needs_review.
+ * 2. Existing content of affected fields is 100% PRESERVED (no blind wipeout/regeneration).
+ * 3. Unrelated approved decisions remain untouched in 'approved' state.
+ * 4. Never blindly regenerates the entire brand system.
+ */
+export function markAffectedFieldsNeedsReview(
+  ctx: SharedContext,
+  changedStage: StageName,
+  options?: { transitive?: boolean }
+): SharedContext {
+  const affected = options?.transitive
+    ? getAffectedDownstreamStages(changedStage)
+    : affectedFields(changedStage);
+  if (affected.length === 0) {
+    return ctx;
+  }
+
+  const updatedApproved = { ...ctx.approved_decisions };
+  let modified = false;
+
+  for (const stage of affected) {
+    const existing = updatedApproved[stage];
+    if (existing && existing.state === "approved") {
+      updatedApproved[stage] = {
+        ...existing,
+        state: "needs_review",
+      };
+      modified = true;
+    }
+  }
+
+  if (!modified) {
+    return ctx;
+  }
+
+  return {
+    ...ctx,
+    approved_decisions: updatedApproved,
+  };
 }

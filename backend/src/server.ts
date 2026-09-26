@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { validateEnvironment } from "@foil/shared";
 import { exportRouter } from "./routes/export.js";
 import { stagesRouter } from "./routes/stages.js";
+import { scenarioProbeRouter } from "./routes/scenarioProbe.js";
 
 dotenv.config();
 
@@ -26,9 +27,11 @@ app.get("/api/health", (_req, res) => {
 // Mount routes
 app.use("/api", exportRouter);
 app.use("/api", stagesRouter);
+app.use("/api", scenarioProbeRouter);
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(`FOIL Backend API running on port ${PORT}`);
   });
 }
+

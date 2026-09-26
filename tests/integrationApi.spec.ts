@@ -182,5 +182,91 @@ describe("T-037: Backend Integration API Endpoints", () => {
     expect(Array.isArray(res.json.affected_stages)).toBe(true);
     expect(Array.isArray(res.json.changed_fields)).toBe(true);
   });
+
+  it("POST /api/scenario-probe/keep marks decision as keep_original and leaves approved_decisions untouched", async () => {
+    let ctx = createInitialSharedContext("scenario_api_test");
+    ctx = writeApprovedDecision(ctx, "discovery", { problem: "Original Problem" }, "strategist_approved", "init");
+
+    ctx.scenario_overrides.push({
+      id: "scen_api_1",
+      triggered_from_stage: "discovery",
+      what_if_input: "What if?",
+      affected_fields: ["positioning"],
+      branch_drafts: [
+        { stage: "positioning", content: { title: "Branched Title" }, generated_at: new Date().toISOString(), attempt: 1 },
+      ],
+      decision: null,
+      created_at: new Date().toISOString(),
+    });
+
+    const res = await testRequest("POST", "/api/scenario-probe/keep", {
+      context: ctx,
+      scenario_id: "scen_api_1",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.json.context.scenario_overrides[0].decision).toBe("keep_original");
+    expect(res.json.context.approved_decisions.positioning).toBeUndefined();
+    expect(res.json.context.revision_log.length).toBe(1); // Only initial discovery
+  });
+
+  it("POST /api/scenario-probe/accept applies branch drafts and writes revision records", async () => {
+    let ctx = createInitialSharedContext("scenario_api_test_2");
+    ctx = writeApprovedDecision(ctx, "discovery", { problem: "Original Problem" }, "strategist_approved", "init");
+
+    ctx.scenario_overrides.push({
+      id: "scen_api_2",
+      triggered_from_stage: "discovery",
+      what_if_input: "What if for accept?",
+      affected_fields: ["positioning"],
+      branch_drafts: [
+        { stage: "positioning", content: { title: "Branched Accepted" }, generated_at: new Date().toISOString(), attempt: 1 },
+      ],
+      decision: null,
+      created_at: new Date().toISOString(),
+    });
+
+    const res = await testRequest("POST", "/api/scenario-probe/accept", {
+      context: ctx,
+      scenario_id: "scen_api_2",
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.json.context.scenario_overrides[0].decision).toBe("accept_branch");
+    expect(res.json.context.approved_decisions.positioning?.content).toEqual({ title: "Branched Accepted" });
+    expect(res.json.context.revision_log.length).toBe(2);
+    expect(res.json.context.revision_log[1].cause).toBe("scenario_accept");
+    expect(res.json.context.revision_log[1].cause_id).toBe("scen_api_2");
+  });
+
+  it("POST /api/scenario-probe/edit applies user edited content and logs revision record", async () => {
+    let ctx = createInitialSharedContext("scenario_api_test_3");
+    ctx = writeApprovedDecision(ctx, "discovery", { problem: "Original Problem" }, "strategist_approved", "init");
+
+    ctx.scenario_overrides.push({
+      id: "scen_api_3",
+      triggered_from_stage: "discovery",
+      what_if_input: "What if for edit?",
+      affected_fields: ["positioning"],
+      branch_drafts: [
+        { stage: "positioning", content: { title: "Branched Pre-edit" }, generated_at: new Date().toISOString(), attempt: 1 },
+      ],
+      decision: null,
+      created_at: new Date().toISOString(),
+    });
+
+    const res = await testRequest("POST", "/api/scenario-probe/edit", {
+      context: ctx,
+      scenario_id: "scen_api_3",
+      stage: "positioning",
+      edited_content: { title: "User Manually Edited Title" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.json.context.scenario_overrides[0].decision).toBe("edit");
+    expect(res.json.context.approved_decisions.positioning?.content).toEqual({ title: "User Manually Edited Title" });
+    expect(res.json.context.revision_log.length).toBe(2);
+    expect(res.json.context.revision_log[1].cause).toBe("scenario_accept");
+  });
 });
 
