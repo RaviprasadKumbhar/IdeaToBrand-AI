@@ -47,7 +47,7 @@ Only work on P2 after P0 is stable and P1 critical items are complete.
 # 4. Phase 0 — Project Foundation
 
 ## T-001 — Repository and Branch Setup
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** None
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** None | **Status:** DONE
 
 ### Tasks
 - Verify repository structure.
@@ -62,7 +62,7 @@ Only work on P2 after P0 is stable and P1 critical items are complete.
 - No secrets are committed.
 
 ## T-002 — Environment and Configuration
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-001
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-001 | **Status:** DONE
 
 ### Tasks
 - Configure required environment variables.
@@ -153,7 +153,7 @@ Validate every structured AI response. Implement retry/regeneration limits from 
 # 6. Phase 2 — Persistence and Project State
 
 ## T-008 — Project Persistence
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-003, T-002
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-003, T-002 | **Status:** DONE
 
 Persist:
 - project information
@@ -169,14 +169,14 @@ Persist:
 **Done when:** state survives refresh and approved/draft data remain separated.
 
 ## T-009 — Approval State Management
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-008
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-008 | **Status:** DONE
 
 Implement approve/reject/edit/revise/review-required behavior according to architecture.
 
 **Done when:** only explicit user action changes approval and changes are logged.
 
 ## T-010 — Revision History
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-009
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-009 | **Status:** DONE
 
 Record meaningful approved changes, including changed field, relevant stage/branch, action/source, and timestamp where supported.
 
