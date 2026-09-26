@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the technical implementation blueprint for FOIL, the staged AI brand engine specified in `FOIL_PRD_Final_v4.0`. The PRD defines **what** FOIL must do — every stage's inputs, output schema, Critic checks, approval states, dependencies, and failure handling. This document defines **how** those requirements are technically realized: components, data model, API contracts, state machines, and build order.
+This document is the technical implementation blueprint for FOIL, the staged AI brand engine specified in `PRD.md`. The PRD defines **what** FOIL must do — every stage's inputs, output schema, Critic checks, approval states, dependencies, and failure handling. This document defines **how** those requirements are technically realized: components, data model, API contracts, state machines, and build order.
 
 **Relationship between the two documents:** the PRD is the source of truth for product behavior. Where this document is silent or ambiguous, the PRD governs. Where a technical decision is genuinely unresolved by the PRD, it is marked `OPEN ARCHITECTURE DECISION` (Section 32) rather than invented. Nothing here changes, simplifies, or removes a PRD requirement.
 
@@ -35,7 +35,7 @@ User
  -> Stage 9: POST /api/export (no AI; pure assembly)
 ```
 
-The backend never stores the Shared Context across requests. The frontend sends the context it already holds on every call that needs it. This is what keeps the backend stateless and removes the need for a database (see Section 4 and Section 32 for the one place this is explicitly an open decision: session survivability).
+The backend never stores Shared Context across requests. The frontend is the authoritative runtime owner and sends the required context slice with each API call. The client mirrors the current working context to sessionStorage for same-tab refresh recovery only. This is session-scoped resilience, not durable database persistence: closing the tab/session ends the working session. No server database, account system, or cross-session project persistence is in MVP scope.
 
 ## Major design principles
 
@@ -109,7 +109,7 @@ Notes on this diagram vs. the PRD's conceptual structure:
 | Playwright | latest | End-to-end test | Drives the Section 25 fixture-idea test through the full pipeline in a real browser | `/e2e` |
 | Vercel or Render (single deploy) | — | Deployment | One frontend + one backend service, no orchestration needed | — |
 
-Database/persistence: **none**. See Section 7 (Shared Context Model) and Section 32 (Open Decisions) for why, and for the one caveat (session survivability across a browser refresh).
+Server database/durable persistence: **none**. Client-side sessionStorage is permitted solely to restore the active working context after a same-tab refresh; it must not be represented as durable or cross-session storage.
 
 ---
 
@@ -1026,10 +1026,10 @@ Two rows above are marked "Not applicable" rather than silently omitted, with ju
 - **Recommended option**: none — PRD Section 27 explicitly leaves this as a team decision, abstracted behind one interface either way (Section 12 already does this). Recommending one over the PRD's own explicit non-decision would be inventing an answer.
 - **Consequence of delaying it**: none, as long as `AIProvider` (Section 12) is implemented before either concrete adapter — both adapters can be built in parallel and the team simply picks one via the `AI_PROVIDER` env var at deploy time, or ships both and lets a judge-visible toggle demonstrate the abstraction.
 
-### Decision 2: Session survivability across a browser refresh
+### Decision 2: Session survivability across a browser refresh — RESOLVED
 - **Why it matters**: the Shared Context lives only in frontend memory (Zustand). A hard refresh mid-demo would lose the in-progress project. The PRD explicitly puts "persistence beyond one working session" out of scope, but a refresh *within* one working session is a real live-demo risk, and the PRD does not directly address it.
 - **Options**: (a) do nothing — accept the risk, since a competent demo shouldn't need a refresh; (b) mirror `SharedContext` to `sessionStorage` on every write, restoring it on mount, so a refresh within the same tab/session survives, but a closed tab does not persist anything (this stays inside "one working session" as the PRD scopes it); (c) add a lightweight backend session store keyed by `project_id`, which starts to resemble the "persistence" the PRD explicitly excludes.
-- **Recommended option**: (b) — `sessionStorage` mirroring is a few lines in the Zustand store's `persist` middleware, adds no backend state, and does not cross the PRD's stated line (it does not survive beyond the browser tab/session).
+- **Decision**: option (b) is the MVP requirement. Mirror SharedContext to `sessionStorage` and restore it on mount. It must not persist after the tab/session ends and must not introduce server-side storage.
 - **Consequence of delaying it**: low risk if delayed — it's an additive resilience feature, not a blocker for any P0 item, and can be added any time before the demo without touching the API contracts in Section 20.
 
 ### Decision 3: PDF export mechanism, if built (P1)
@@ -1078,6 +1078,6 @@ No product requirement is resolved here; all three items are purely technical im
 
 **Audit 2 — internal consistency.** Checked specifically for: audit-before-Launch-Prep (not present — Section 18 enforces the opposite via a 409 gate); approved data silently overwritten (not present — single choke point, Section 7); Scenario Probe bypassing Critic (not present — Section 17 routes every affected field through the same Strategist→Critic pipeline as any other stage run); export bypassing approval (not present — Section 19's two-condition gate); dependencies causing unnecessary regeneration (not present — `affectedFields()` only sets `needs_review`, never triggers regeneration itself, Section 16); a third agent being introduced (not present — Section 11 explicitly reuses the Critic module for the Audit); AI assumptions treated as facts (not present — `user_facts`/`ai_assumptions` kept structurally separate throughout, Section 7). No contradictions found.
 
-**Audit 3 — implementability.** Given only `FOIL_PRD_Final_v4.pdf`-equivalent content (the uploaded PRD markdown) and this `architecture.md`, a coding agent has: exact TypeScript interfaces for every domain object (Section 6); exact Zod-schema field lists per stage (Section 9, cross-referenced to PRD Section 9.x tables); an exact API surface with request/response shapes (Section 20); an exact repository layout (Section 5); an exact build order (Section 29); and an exact list of what's still genuinely open, with recommendations (Section 32). The only decisions left to a coding agent are the three explicitly marked open ones, all of which are non-blocking for P0. Answer: **yes**, implementable without further major architectural decisions.
+**Audit 3 — implementability.** Given only `PRD.md`-equivalent content (the uploaded PRD markdown) and this `architecture.md`, a coding agent has: exact TypeScript interfaces for every domain object (Section 6); exact Zod-schema field lists per stage (Section 9, cross-referenced to PRD Section 9.x tables); an exact API surface with request/response shapes (Section 20); an exact repository layout (Section 5); an exact build order (Section 29); and an exact list of what's still genuinely open, with recommendations (Section 32). The remaining provider choice is a team configuration decision. Session survivability is resolved for MVP: mirror working context to sessionStorage for same-tab refresh recovery; do not add a database or cross-session persistence. This keeps the implementation aligned with PRD's explicit exclusion of persistence beyond one working session.
 
 **Result: architecture.md is ready for implementation.**
