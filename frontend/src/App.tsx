@@ -1,6 +1,6 @@
 /**
  * App — Root Application with Supabase AuthProvider, Public Landing & Auth Pages,
- * and Authenticated Stage Workspace (AppShell).
+ * and Authenticated Conversational Chat Workspace.
  */
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { ChatWorkspace } from './components/chat/ChatWorkspace';
 import { AppShell } from './components/AppShell';
 import { IdeaInput } from './stages/idea-input/IdeaInput';
 import { DiscoveryStage } from './stages/discovery/DiscoveryStage';
@@ -25,7 +26,7 @@ import { ScenarioProbePage } from './stages/scenario-probe/ScenarioProbePage';
 
 function NotFound() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center py-20 px-4 gap-4 text-center bg-paper-50 font-sans">
+    <div className="min-h-screen flex flex-col items-center justify-center py-20 px-4 gap-4 text-center bg-paper-50">
       <p className="text-6xl font-extrabold text-ink-950">404</p>
       <h2 className="text-xl font-bold text-ink-800">Page not found</h2>
       <p className="text-sm text-ink-500 max-w-sm">
@@ -48,16 +49,28 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Landing & Authentication */}
+          {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-          {/* Authenticated Workspace: Main Idea Canvas */}
+          {/* Authenticated Conversational Workspace */}
           <Route
             path="/workspace"
+            element={
+              <ProtectedRoute>
+                <ChatWorkspace />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/chat" element={<Navigate to="/workspace" replace />} />
+          <Route path="/app" element={<Navigate to="/workspace" replace />} />
+
+          {/* Deep-Dive Stage Views (Preserved with AppShell) */}
+          <Route
+            path="/idea-input"
             element={
               <ProtectedRoute>
                 <AppShell>
@@ -66,11 +79,6 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/idea-input" element={<Navigate to="/workspace" replace />} />
-          <Route path="/chat" element={<Navigate to="/workspace" replace />} />
-          <Route path="/app" element={<Navigate to="/workspace" replace />} />
-
-          {/* Deep-Dive Stage Views */}
           <Route
             path="/discovery"
             element={
