@@ -55,29 +55,40 @@ export function LoadingState({ stage }: LoadingStateProps) {
 
   return (
     <div
-      className="card p-8 flex flex-col items-center gap-5 text-center"
+      className="card p-8 flex flex-col items-center gap-6 text-center"
       role="status"
       aria-live="polite"
       aria-label={title}
     >
-      {/* Spinner */}
-      <div
-        className="w-10 h-10 rounded-full border-2 border-accent-100 border-t-accent-600 animate-spin"
-        aria-hidden="true"
-      />
+      {/* Animated spinner */}
+      <div className="relative flex items-center justify-center">
+        <div
+          className="w-12 h-12 rounded-full border-2 border-accent-100 border-t-accent-600 animate-spin"
+          aria-hidden="true"
+        />
+        <span className="absolute text-accent-600 text-lg" aria-hidden="true">✶</span>
+      </div>
 
-      <div>
-        <p className="text-h3 text-ink-950 font-semibold mb-3">{title}</p>
-        <p className="text-sm text-ink-500 mb-3">FOIL is organizing the information into:</p>
-        <ul className="text-sm text-ink-700 space-y-1 text-left inline-block">
-          {bullets.map((b) => (
-            <li key={b} className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-600 flex-shrink-0" aria-hidden="true" />
-              {b}
+      <div className="max-w-xs">
+        <p className="text-h3 text-ink-950 font-semibold mb-1">{title}</p>
+        <p className="text-xs text-ink-500 mb-4">FOIL is organizing the information into:</p>
+        <ul className="text-sm text-ink-700 space-y-2 text-left">
+          {bullets.map((b, i) => (
+            <li key={b} className="flex items-center gap-2.5">
+              <span
+                className="w-2 h-2 rounded-full bg-accent-600 flex-shrink-0 animate-pulse"
+                style={{ animationDelay: `${i * 150}ms` }}
+                aria-hidden="true"
+              />
+              <span className="text-ink-700">{b}</span>
             </li>
           ))}
         </ul>
       </div>
+
+      <p className="text-[11px] text-ink-400 italic">
+        Using only approved decisions from previous stages
+      </p>
     </div>
   );
 }

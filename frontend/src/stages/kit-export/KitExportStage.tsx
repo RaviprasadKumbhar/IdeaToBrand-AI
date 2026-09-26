@@ -8,14 +8,14 @@ import { useNavigate } from 'react-router-dom';
 import { useFOILStore } from '../../store/foilStore';
 import { assembleExport } from '../../lib/api-client';
 
-const REQUIRED_STAGES = [
-  { stage: 'discovery', label: 'Discovery approved' },
-  { stage: 'positioning', label: 'Positioning approved' },
-  { stage: 'naming_personality', label: 'Naming + Personality approved' },
-  { stage: 'tagline_pitch', label: 'Tagline + Pitch approved' },
-  { stage: 'visual_brief', label: 'Visual Brief approved' },
-  { stage: 'voice_messaging', label: 'Voice + Messaging approved' },
-  { stage: 'launch_prep', label: 'Launch Prep approved' },
+const REQUIRED_STAGES: { stage: string; label: string; route: string }[] = [
+  { stage: 'discovery',          label: 'Discovery approved',          route: '/discovery' },
+  { stage: 'positioning',        label: 'Positioning approved',        route: '/positioning' },
+  { stage: 'naming_personality', label: 'Naming + Personality approved', route: '/naming-personality' },
+  { stage: 'tagline_pitch',      label: 'Tagline + Pitch approved',    route: '/tagline-pitch' },
+  { stage: 'visual_brief',       label: 'Visual Brief approved',       route: '/visual-brief' },
+  { stage: 'voice_messaging',    label: 'Voice + Messaging approved',  route: '/voice-messaging' },
+  { stage: 'launch_prep',        label: 'Launch Prep approved',        route: '/launch-prep' },
 ] as const;
 
 export function KitExportStage() {
@@ -27,8 +27,8 @@ export function KitExportStage() {
 
   const approved = store.ctx.approved_decisions;
   const consistencyFindings = store.ctx.consistency_findings;
-  const stageChecks = REQUIRED_STAGES.map(({ stage, label }) => ({
-    label, ok: !!approved[stage as keyof typeof approved],
+  const stageChecks = REQUIRED_STAGES.map(({ stage, label, route }) => ({
+    label, ok: !!approved[stage as keyof typeof approved], route,
   }));
   const auditResolved = consistencyFindings.length === 0 ||
     consistencyFindings.every(f => f.user_action !== null);
@@ -71,24 +71,48 @@ export function KitExportStage() {
         <p className="text-body text-ink-500 mt-1">Export your approved brand system as a Markdown document.</p>
       </header>
 
-      {/* Export readiness checklist — design.md § 28.1 */}
+      {/* Export readiness checklist */}
       <section aria-label="Export readiness checklist">
         <h2 className="text-h3 font-semibold text-ink-950 mb-3">Export Readiness</h2>
-        <div className="card p-5 space-y-2">
-          {stageChecks.map(({ label, ok }) => (
-            <div key={label} className="flex items-center gap-3">
-              <span className={ok ? 'text-green-600' : 'text-ink-400'} aria-hidden="true">{ok ? '✓' : '○'}</span>
-              <span className={`text-sm ${ok ? 'text-ink-950' : 'text-ink-500'}`}>{label}</span>
+        <div className="card p-5 divide-y divide-border">
+          {stageChecks.map(({ label, ok, route }) => (
+            <div key={label} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+              <span
+                className={[
+                  'flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold',
+                  ok ? 'bg-green-100 text-green-700' : 'bg-surface-100 text-ink-400',
+                ].join(' ')}
+                aria-hidden="true"
+              >
+                {ok ? '\u2713' : '\u25cb'}
+              </span>
+              <span className={`text-sm flex-1 ${ok ? 'text-ink-950' : 'text-ink-500'}`}>{label}</span>
               {!ok && (
-                <button onClick={() => navigate(-1)} className="ml-auto text-xs text-accent-600 underline">Go to stage</button>
+                <button
+                  onClick={() => navigate(route)}
+                  className="ml-auto text-xs text-accent-600 underline hover:no-underline focus:outline-none focus:underline"
+                  aria-label={`Go to ${label.replace(' approved', '')} stage`}
+                >
+                  Go to stage
+                </button>
               )}
             </div>
           ))}
-          <div className="flex items-center gap-3 border-t border-border pt-2 mt-2">
-            <span className={auditResolved ? 'text-green-600' : 'text-amber-500'} aria-hidden="true">{auditResolved ? '✓' : '⚠'}</span>
-            <span className={`text-sm ${auditResolved ? 'text-ink-950' : 'text-amber-700'}`}>Consistency Audit resolved</span>
+          <div className="flex items-center gap-3 py-2.5 last:pb-0">
+            <span
+              className={[
+                'flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold',
+                auditResolved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-600',
+              ].join(' ')}
+              aria-hidden="true"
+            >
+              {auditResolved ? '\u2713' : '!'}
+            </span>
+            <span className={`text-sm flex-1 ${auditResolved ? 'text-ink-950' : 'text-amber-700'}`}>Consistency Audit resolved</span>
             {!auditResolved && (
-              <button onClick={() => navigate('/consistency-audit')} className="ml-auto text-xs text-accent-600 underline">Resolve findings</button>
+              <button onClick={() => navigate('/consistency-audit')} className="ml-auto text-xs text-accent-600 underline hover:no-underline" aria-label="Go to Consistency Audit stage">
+                Resolve findings
+              </button>
             )}
           </div>
         </div>
@@ -123,15 +147,19 @@ export function KitExportStage() {
 
       {exportContent && (
         <div className="space-y-3">
-          <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
-            <span className="text-green-600">✓</span>
-            <p className="text-sm font-semibold text-green-800">Brand kit assembled from approved decisions only.</p>
+          <div className="flex items-center gap-2 p-3.5 bg-green-50 border border-green-200 rounded-md">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm" aria-hidden="true">\u2713</span>
+            <div>
+              <p className="text-sm font-semibold text-green-800">Brand kit assembled from approved decisions only.</p>
+              <p className="text-xs text-green-700 mt-0.5">{exportContent.split('\n').length} lines generated from {Object.keys(store.ctx.approved_decisions).length} approved stages.</p>
+            </div>
           </div>
           <div className="card p-4">
-            <pre className="text-xs font-mono text-ink-700 whitespace-pre-wrap overflow-x-auto max-h-64">{exportContent}</pre>
+            <p className="section-label mb-2 text-ink-500">Preview</p>
+            <pre className="text-xs font-mono text-ink-700 whitespace-pre-wrap overflow-x-auto max-h-64 leading-relaxed">{exportContent}</pre>
           </div>
           <button id="btn-download-markdown" onClick={handleDownload} className="btn-primary">
-            ↓ Download Markdown
+            \u2193 Download Markdown
           </button>
         </div>
       )}

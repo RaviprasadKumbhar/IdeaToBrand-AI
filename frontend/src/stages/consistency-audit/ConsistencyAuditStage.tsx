@@ -197,21 +197,24 @@ export function ConsistencyAuditStage() {
 
       {hasRun && !isLoading && (
         <div className="space-y-5">
-          {/* ── Summary banner ─────────────────────────────────────────────────── */}
+          {/* Summary banner */}
           <div
             className={`p-4 rounded-md border flex items-start gap-3 ${allResolved ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}
             role="status"
             aria-live="polite"
           >
-            <span className={`text-lg mt-0.5 ${allResolved ? 'text-green-600' : 'text-amber-600'}`} aria-hidden="true">
-              {allResolved ? '✓' : '⚠'}
+            <span
+              className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold mt-0.5 ${allResolved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}
+              aria-hidden="true"
+            >
+              {allResolved ? '\u2713' : '!'}
             </span>
-            <div>
+            <div className="flex-1 min-w-0">
               <p className={`font-semibold text-sm ${allResolved ? 'text-green-800' : 'text-amber-800'}`}>
                 {findings.length === 0
-                  ? 'Brand system is fully consistent — no issues found.'
+                  ? 'Brand system is fully consistent \u2014 no issues found.'
                   : allResolved
-                  ? 'All findings resolved — ready for Kit Assembly.'
+                  ? `All ${findings.length} finding${findings.length > 1 ? 's' : ''} resolved \u2014 ready for Kit Assembly.`
                   : `${unresolvedCount} of ${findings.length} finding${findings.length > 1 ? 's' : ''} unresolved`}
               </p>
               {!allResolved && findings.length > 0 && (
@@ -263,12 +266,15 @@ export function ConsistencyAuditStage() {
             </section>
           )}
 
-          {/* ── Re-run option ─────────────────────────────────────────────────── */}
-          <div className="flex justify-end">
+          {/* Re-run option */}
+          <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+            <p className="text-xs text-ink-500">
+              Re-running replaces current findings with a fresh audit pass.
+            </p>
             <button
               id="btn-rerun-audit"
               onClick={handleRunAudit}
-              className="btn-secondary text-xs"
+              className="btn-secondary text-xs flex-shrink-0"
               aria-label="Re-run the Consistency Audit"
             >
               ⟳ Re-run Audit

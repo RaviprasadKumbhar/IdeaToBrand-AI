@@ -7,17 +7,17 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useFOILStore } from '../store/foilStore';
 import type { StageName } from '../../../shared/types';
 
-const STAGE_ROUTES: { stage: StageName | 'idea-input'; label: string; route: string }[] = [
-  { stage: 'idea-input',          label: 'Idea Input',         route: '/' },
-  { stage: 'discovery',           label: 'Discovery',          route: '/discovery' },
-  { stage: 'positioning',         label: 'Positioning',        route: '/positioning' },
-  { stage: 'naming_personality',  label: 'Naming + Personality', route: '/naming-personality' },
-  { stage: 'tagline_pitch',       label: 'Tagline + Pitch',    route: '/tagline-pitch' },
-  { stage: 'visual_brief',        label: 'Visual Brief',       route: '/visual-brief' },
-  { stage: 'voice_messaging',     label: 'Voice + Messaging',  route: '/voice-messaging' },
-  { stage: 'launch_prep',         label: 'Launch Prep',        route: '/launch-prep' },
-  { stage: 'consistency_audit',   label: 'Consistency Audit',  route: '/consistency-audit' },
-  { stage: 'kit_export',          label: 'Kit & Export',       route: '/export' },
+const STAGE_ROUTES: { stage: StageName | 'idea-input'; label: string; route: string; step: number }[] = [
+  { stage: 'idea-input',          label: 'Idea Input',           route: '/',                   step: 0 },
+  { stage: 'discovery',           label: 'Discovery',            route: '/discovery',           step: 1 },
+  { stage: 'positioning',         label: 'Positioning',          route: '/positioning',         step: 2 },
+  { stage: 'naming_personality',  label: 'Naming + Personality', route: '/naming-personality',  step: 3 },
+  { stage: 'tagline_pitch',       label: 'Tagline + Pitch',      route: '/tagline-pitch',       step: 4 },
+  { stage: 'visual_brief',        label: 'Visual Brief',         route: '/visual-brief',        step: 5 },
+  { stage: 'voice_messaging',     label: 'Voice + Messaging',    route: '/voice-messaging',     step: 6 },
+  { stage: 'launch_prep',         label: 'Launch Prep',          route: '/launch-prep',         step: 7 },
+  { stage: 'consistency_audit',   label: 'Consistency Audit',    route: '/consistency-audit',   step: 8 },
+  { stage: 'kit_export',          label: 'Kit & Export',         route: '/export',              step: 9 },
 ];
 
 interface AppShellProps {
@@ -117,30 +117,51 @@ export function AppShell({ children }: AppShellProps) {
           aria-label="Stage navigation"
           role="navigation"
         >
-          <nav className="py-4">
-            <p className="px-4 mb-2 section-label">Workflow</p>
+          <nav className="py-3">
+            <p className="px-4 mb-2 section-label text-ink-500">Workflow Steps</p>
             <ul role="list">
-              {STAGE_ROUTES.map(({ stage, label, route }) => {
+              {STAGE_ROUTES.map(({ stage, label, route, step }) => {
                 const isActive = location.pathname === route;
-                const { icon, className: iconClass } = getStatusIcon(stage);
+                const { icon } = getStatusIcon(stage);
+                const needsReview = uiStates[stage as StageName]?.approval_state === 'needs_review';
                 return (
                   <li key={stage}>
                     <button
                       onClick={() => navigate(route)}
                       className={[
-                        'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left',
+                        'w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors text-left rounded-none',
                         isActive
-                          ? 'bg-accent-100 text-accent-600 font-semibold'
-                          : 'text-ink-700 hover:bg-surface-100',
+                          ? 'bg-accent-100 text-accent-700 font-semibold border-l-2 border-accent-600'
+                          : 'text-ink-700 hover:bg-surface-100 border-l-2 border-transparent',
                       ].join(' ')}
                       aria-current={isActive ? 'page' : undefined}
                     >
-                      <span className={`w-4 text-center text-xs font-bold ${iconClass}`} aria-hidden="true">
-                        {icon}
+                      {/* Step number */}
+                      <span
+                        className={[
+                          'flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold',
+                          icon === '✓'
+                            ? 'bg-green-100 text-green-700'
+                            : icon === '⚠'
+                            ? 'bg-amber-100 text-amber-700'
+                            : icon === '✕'
+                            ? 'bg-red-100 text-red-700'
+                            : isActive
+                            ? 'bg-accent-600 text-white'
+                            : 'bg-surface-100 text-ink-500',
+                        ].join(' ')}
+                        aria-hidden="true"
+                      >
+                        {icon === '✓' || icon === '✕' || icon === '⚠' ? icon : step}
                       </span>
-                      <span className="truncate">{label}</span>
-                      {uiStates[stage as StageName]?.approval_state === 'needs_review' && (
-                        <span className="ml-auto badge-needs-review">Review</span>
+                      <span className="truncate flex-1">{label}</span>
+                      {needsReview && (
+                        <span
+                          className="ml-auto flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700"
+                          aria-label="Needs review"
+                        >
+                          Review
+                        </span>
                       )}
                     </button>
                   </li>

@@ -446,7 +446,7 @@ describe('T-032 ConsistencyAuditStage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Accept this finding/i }));
 
     await waitFor(() => expect(screen.queryByLabelText(/Export blocked/i)).not.toBeInTheDocument());
-    expect(screen.getByText(/All findings resolved/i)).toBeInTheDocument();
+    expect(screen.getByText(/resolved.*ready for Kit Assembly/i)).toBeInTheDocument();
   });
 
   it('shows no findings message when audit returns empty', async () => {

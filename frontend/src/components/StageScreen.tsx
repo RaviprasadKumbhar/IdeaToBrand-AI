@@ -132,8 +132,12 @@ export function StageScreen({
 
           {/* Approved label */}
           {approvalState === 'approved' && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-md">
-              <span className="text-green-700 font-semibold text-sm">✓ Approved by you</span>
+            <div className="flex items-center gap-2.5 p-3.5 bg-green-50 border border-green-200 rounded-md">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-700 text-sm font-bold" aria-hidden="true">✓</span>
+              <div>
+                <p className="text-green-800 font-semibold text-sm">Approved by you</p>
+                <p className="text-green-700 text-xs mt-0.5">This decision is authoritative — used as context for all downstream stages.</p>
+              </div>
             </div>
           )}
 
@@ -185,7 +189,7 @@ export function StageScreen({
 
           {/* ─── Edit-approved controls ───────────────────────────────── */}
           {approvalState === 'approved' && (
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-3 pt-2 border-t border-border mt-1">
               {onEdit && (
                 <button
                   id={`btn-edit-approved-${stage}`}
@@ -193,7 +197,7 @@ export function StageScreen({
                   className="btn-secondary text-xs"
                   aria-label="Edit this approved decision — downstream stages may need review"
                 >
-                  Edit Decision
+                  ✎ Edit Decision
                 </button>
               )}
               <p className="text-xs text-ink-500">
