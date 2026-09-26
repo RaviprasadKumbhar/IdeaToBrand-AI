@@ -63,7 +63,11 @@ export function DiscoveryStage() {
     store.setError('discovery', null);
     try {
       const result = await generateStage('discovery', {
+        idea_text: store.ctx.user_facts?.business_description,
+        business_description: store.ctx.user_facts?.business_description,
         user_facts: store.ctx.user_facts,
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
       });
       store.setDraft('discovery', result.content);
       store.transitionStage('discovery', 'generate');

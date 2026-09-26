@@ -72,7 +72,10 @@ export function VisualBriefStage() {
     store.setLoading('visual_brief', true);
     store.setError('visual_brief', null);
     try {
-      const result = await generateStage('visual_brief', { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage('visual_brief', {
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
+      });
       store.setDraft('visual_brief', result.content);
       store.transitionStage('visual_brief', 'generate');
       const newFindings: CriticFinding[] = result.findings.map(f => ({

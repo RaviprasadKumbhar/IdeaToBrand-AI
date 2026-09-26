@@ -128,7 +128,10 @@ export function ConsistencyAuditStage() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await runConsistencyAudit(store.ctx.approved_decisions as Record<string, unknown>);
+      const result = await runConsistencyAudit({
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
+      });
       const withIds: ConsistencyFinding[] = result.findings.map(f => ({ ...f, id: f.id ?? uuid() }));
       store.setConsistencyFindings(withIds);
       setHasRun(true);

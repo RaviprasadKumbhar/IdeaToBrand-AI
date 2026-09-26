@@ -22,7 +22,10 @@ export function LaunchPrepStage() {
     store.setLoading('launch_prep', true);
     store.setError('launch_prep', null);
     try {
-      const result = await generateStage('launch_prep', { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage('launch_prep', {
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
+      });
       store.setDraft('launch_prep', result.content);
       store.transitionStage('launch_prep', 'generate');
       const newFindings: CriticFinding[] = result.findings.map(f => ({

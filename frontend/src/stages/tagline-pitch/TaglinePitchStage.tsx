@@ -84,7 +84,10 @@ export function TaglinePitchStage() {
     store.setLoading('tagline_pitch', true);
     store.setError('tagline_pitch', null);
     try {
-      const result = await generateStage('tagline_pitch', { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage('tagline_pitch', {
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
+      });
       store.setDraft('tagline_pitch', result.content);
       store.transitionStage('tagline_pitch', 'generate');
       const newFindings: CriticFinding[] = result.findings.map(f => ({

@@ -30,7 +30,11 @@ export function GenericStage({ stage, stageNumber, title, description, children 
     store.setLoading(stage, true);
     store.setError(stage, null);
     try {
-      const result = await generateStage(stage, { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage(stage, {
+        approved_decisions: store.ctx.approved_decisions,
+        user_facts: store.ctx.user_facts,
+        context: store.ctx,
+      });
       store.setDraft(stage, result.content);
       store.transitionStage(stage, 'generate');
       const newFindings: CriticFinding[] = result.findings.map(f => ({

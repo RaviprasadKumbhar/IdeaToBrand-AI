@@ -111,7 +111,10 @@ export function PositioningStage() {
     store.setLoading('positioning', true);
     store.setError('positioning', null);
     try {
-      const result = await generateStage('positioning', { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage('positioning', {
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
+      });
       store.setDraft('positioning', result.content);
       store.transitionStage('positioning', 'generate');
       const newFindings: CriticFinding[] = result.findings.map(f => ({

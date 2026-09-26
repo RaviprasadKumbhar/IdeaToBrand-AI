@@ -88,7 +88,10 @@ export function NamingPersonalityStage() {
     store.setLoading('naming_personality', true);
     store.setError('naming_personality', null);
     try {
-      const result = await generateStage('naming_personality', { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage('naming_personality', {
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
+      });
       store.setDraft('naming_personality', result.content);
       store.transitionStage('naming_personality', 'generate');
       const newFindings: CriticFinding[] = result.findings.map(f => ({

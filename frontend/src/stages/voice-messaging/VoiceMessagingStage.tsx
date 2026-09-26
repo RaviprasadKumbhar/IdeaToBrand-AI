@@ -30,7 +30,10 @@ export function VoiceMessagingStage() {
     store.setLoading('voice_messaging', true);
     store.setError('voice_messaging', null);
     try {
-      const result = await generateStage('voice_messaging', { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage('voice_messaging', {
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
+      });
       store.setDraft('voice_messaging', result.content);
       store.transitionStage('voice_messaging', 'generate');
       const newFindings: CriticFinding[] = result.findings.map(f => ({
