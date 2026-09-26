@@ -72,14 +72,21 @@ export function VisualBriefStage() {
     store.setLoading('visual_brief', true);
     store.setError('visual_brief', null);
     try {
-      const result = await generateStage('visual_brief', { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage('visual_brief', {
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
+      });
       store.setDraft('visual_brief', result.content);
-      store.transitionStage('visual_brief', 'generate');
+      // Reset to draft then submit to critic (safe from any state)
+      store.transitionStage('visual_brief', { type: 'RESET_STAGE' });
+      store.transitionStage('visual_brief', { type: 'SUBMIT_CRITIC' });
       const newFindings: CriticFinding[] = result.findings.map(f => ({
         ...f, id: f.id ?? uuid(), stage: 'visual_brief' as const,
       }));
       store.addCriticFindings(newFindings);
-      store.transitionStage('visual_brief', newFindings.length > 0 ? 'critic_flag' : 'critic_pass');
+      if (newFindings.length > 0) {
+        store.transitionStage('visual_brief', { type: 'CRITIC_FINDINGS_DETECTED' });
+      }
     } catch (err: unknown) {
       store.setError('visual_brief', {
         stage: 'visual_brief',
@@ -112,7 +119,7 @@ export function VisualBriefStage() {
       onReject={() => store.rejectStage('visual_brief')}
       onRegenerate={handleGenerate}
       onFindingAction={(id, action) => store.actOnCriticFinding(id, action)}
-      onEdit={() => store.transitionStage('visual_brief', 'user_edit')}
+      onEdit={() => store.transitionStage('visual_brief', { type: 'USER_EDIT' })}
       needsReviewCause="Tagline + Pitch"
     >
       {content && (

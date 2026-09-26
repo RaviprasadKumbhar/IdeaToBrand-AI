@@ -18,7 +18,8 @@ import type {
   IdeaInput,
 } from '../../../shared/types';
 import { affectedFields } from '../../../shared/dependency-map';
-import { transition } from '../../../shared/state-machine';
+import { transition } from '../../../shared/src/store/approvalStateMachine';
+import type { ApprovalEvent } from '../../../shared/src/types/index';
 import { saveWorkspaceProject, type WorkspaceProjectData } from '../lib/supabase-workspace';
 
 // ─── Initial state ──────────────────────────────────────────────────────────
@@ -115,7 +116,7 @@ export interface FOILStore {
   rejectStage: (stage: StageName) => void;
 
   /** Transition approval state for a stage. */
-  transitionStage: (stage: StageName, event: Parameters<typeof transition>[1]) => void;
+  transitionStage: (stage: StageName, event: ApprovalEvent) => void;
 
   // Critic findings
   addCriticFindings: (findings: CriticFinding[]) => void;

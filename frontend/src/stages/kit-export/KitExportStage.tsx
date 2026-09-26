@@ -39,7 +39,10 @@ export function KitExportStage() {
     setIsExporting(true);
     setExportError(null);
     try {
-      const result = await assembleExport(approved as Record<string, unknown>);
+      const result = await assembleExport(
+        store.ctx as unknown as Record<string, unknown>,
+        consistencyFindings
+      );
       if (result.status === 'failed') {
         setExportError('Export failed. No partial file was produced. Please check that all stages are approved.');
       } else {

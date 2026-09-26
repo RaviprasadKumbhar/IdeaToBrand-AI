@@ -88,14 +88,21 @@ export function NamingPersonalityStage() {
     store.setLoading('naming_personality', true);
     store.setError('naming_personality', null);
     try {
-      const result = await generateStage('naming_personality', { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage('naming_personality', {
+        approved_decisions: store.ctx.approved_decisions,
+        context: store.ctx,
+      });
       store.setDraft('naming_personality', result.content);
-      store.transitionStage('naming_personality', 'generate');
+      // Reset to draft then submit to critic (safe from any state)
+      store.transitionStage('naming_personality', { type: 'RESET_STAGE' });
+      store.transitionStage('naming_personality', { type: 'SUBMIT_CRITIC' });
       const newFindings: CriticFinding[] = result.findings.map(f => ({
         ...f, id: f.id ?? uuid(), stage: 'naming_personality' as const,
       }));
       store.addCriticFindings(newFindings);
-      store.transitionStage('naming_personality', newFindings.length > 0 ? 'critic_flag' : 'critic_pass');
+      if (newFindings.length > 0) {
+        store.transitionStage('naming_personality', { type: 'CRITIC_FINDINGS_DETECTED' });
+      }
     } catch (err: unknown) {
       store.setError('naming_personality', {
         stage: 'naming_personality',
@@ -141,7 +148,7 @@ export function NamingPersonalityStage() {
       onReject={() => store.rejectStage('naming_personality')}
       onRegenerate={handleGenerate}
       onFindingAction={(id, action) => store.actOnCriticFinding(id, action)}
-      onEdit={() => store.transitionStage('naming_personality', 'user_edit')}
+      onEdit={() => store.transitionStage('naming_personality', { type: 'USER_EDIT' })}
       needsReviewCause="Positioning"
     >
       {content && (

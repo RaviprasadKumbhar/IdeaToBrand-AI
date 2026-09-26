@@ -214,7 +214,6 @@ export function ChatWorkspace() {
 
     try {
       const targetStage = currentWorkingStage;
-
       // Gate 1 (Brand Discovery): Interview Strategist reverse-questions & checks readiness
       if (targetStage === 'discovery' && !ctx.approved_decisions.discovery) {
         const interviewRes = await sendInterviewTurn({
@@ -261,6 +260,11 @@ export function ChatWorkspace() {
         // Subsequent stages (positioning, naming, tagline, visual, voice, launch, audit, export)
         const res = await generateStage(targetStage, {
           user_message: textToSend,
+          idea_text: ctx.user_facts?.business_description || textToSend,
+          business_description: ctx.user_facts?.business_description || textToSend,
+          user_facts: ctx.user_facts,
+          approved_decisions: ctx.approved_decisions,
+          context: ctx,
           ...ctx.user_facts,
           ...ctx.approved_decisions,
         });

@@ -234,6 +234,130 @@ describe('T-017 PositioningStage', () => {
     renderWithRouter(<PositioningStage />);
     expect(screen.getByText(/no directions loaded/i)).toBeInTheDocument();
   });
+
+  it('renders directions as cards without raw JSON syntax', () => {
+    renderWithRouter(<PositioningStage />);
+    expect(screen.getByText('Choose your brand direction')).toBeInTheDocument();
+    expect(screen.getByText(/We found two ways to position your product/i)).toBeInTheDocument();
+    expect(screen.getAllByText('FOR').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('THE PROBLEM').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('WHAT MAKES IT DIFFERENT').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('WHY THIS DIRECTION').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('WATCH-OUT').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/directions:\s*\[/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/{"title":/)).not.toBeInTheDocument();
+  });
+
+  it('allows only one direction to be selected at a time', async () => {
+    renderWithRouter(<PositioningStage />);
+    const selectBtnA = screen.getByRole('button', { name: /select direction a/i });
+    const selectBtnB = screen.getByRole('button', { name: /select direction b/i });
+
+    await userEvent.click(selectBtnA);
+    expect(screen.getByText(/selected: efficiency first/i)).toBeInTheDocument();
+
+    await userEvent.click(selectBtnB);
+    expect(screen.getByText(/selected: human-led growth/i)).toBeInTheDocument();
+    expect(screen.queryByText(/selected: efficiency first/i)).not.toBeInTheDocument();
+  });
+
+  it('disables primary approve button until a direction is selected', async () => {
+    renderWithRouter(<PositioningStage />);
+    const approveBtn = screen.getByRole('button', { name: /approve this direction/i });
+    expect(approveBtn).toBeDisabled();
+
+    const selectBtnA = screen.getByRole('button', { name: /select direction a/i });
+    await userEvent.click(selectBtnA);
+
+    expect(approveBtn).toBeEnabled();
+  });
+
+  it('approves selected direction using existing writeApprovedDecision choke point', async () => {
+    renderWithRouter(<PositioningStage />);
+    const selectBtnA = screen.getByRole('button', { name: /select direction a/i });
+    await userEvent.click(selectBtnA);
+
+    const approveBtn = screen.getByRole('button', { name: /approve this direction/i });
+    await userEvent.click(approveBtn);
+
+    expect(mockWriteApproved).toHaveBeenCalledWith(
+      'positioning',
+      expect.objectContaining({
+        title: 'Efficiency First',
+        selected_direction: expect.objectContaining({ title: 'Efficiency First' }),
+        directions: [POSITIONING_FIXTURE.directions[0]],
+      }),
+      'user_edit',
+      expect.any(String)
+    );
+  });
+
+  it('renders critic findings as readable considerations and omits block when empty', () => {
+    const fixtureWithFindings = {
+      directions: [
+        {
+          ...POSITIONING_FIXTURE.directions[0],
+          critic_findings: [
+            {
+              issue_type: 'cliche',
+              explanation: 'Overused corporate phrasing in value proposition',
+              sharper_alternative: 'Focus on measured time-to-first-workflow',
+            },
+          ],
+        },
+        {
+          ...POSITIONING_FIXTURE.directions[1],
+          critic_findings: [],
+        },
+      ],
+    };
+
+    mockedStore.mockReturnValue(makeMockStore({
+      ctx: {
+        stage_drafts: { positioning: { stage: 'positioning', content: fixtureWithFindings, generated_at: '', attempt: 1 } },
+        approved_decisions: {},
+        critic_findings: [],
+        consistency_findings: [],
+      },
+    }) as never);
+
+    renderWithRouter(<PositioningStage />);
+    expect(screen.getByText('Considerations')).toBeInTheDocument();
+    expect(screen.getByText('Overused corporate phrasing in value proposition')).toBeInTheDocument();
+    expect(screen.getByText('Focus on measured time-to-first-workflow')).toBeInTheDocument();
+  });
+
+  it('renders confirmation UI and next stages when positioning is approved', () => {
+    mockedStore.mockReturnValue(makeMockStore({
+      ctx: {
+        stage_drafts: { positioning: { stage: 'positioning', content: POSITIONING_FIXTURE, generated_at: '', attempt: 1 } },
+        approved_decisions: {
+          positioning: {
+            stage: 'positioning',
+            content: {
+              ...POSITIONING_FIXTURE.directions[0],
+              selected_direction: POSITIONING_FIXTURE.directions[0],
+              directions: [POSITIONING_FIXTURE.directions[0]],
+            },
+            approved_at: '2026-09-27T00:00:00.000Z',
+            state: 'approved',
+            source: 'user_edit',
+          },
+        },
+        critic_findings: [],
+        consistency_findings: [],
+      },
+      uiStates: {
+        positioning: { approval_state: 'approved', is_loading: false, error: null },
+      },
+    }) as never);
+
+    renderWithRouter(<PositioningStage />);
+    expect(screen.getByText('✓ Positioning approved')).toBeInTheDocument();
+    expect(screen.getByText(/Your positioning is now part of the approved brand foundation/i)).toBeInTheDocument();
+    expect(screen.getByText(/Next: Naming → Tagline → Visual Identity → Voice → Launch/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /continue to naming & personality/i })).toBeInTheDocument();
+  });
 });
 
 // ── T-019 Naming + Personality ───────────────────────────────────────────────

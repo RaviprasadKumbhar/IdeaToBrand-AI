@@ -13,7 +13,11 @@ import type {
 } from '../../../shared/types';
 import { v4 as uuid } from 'uuid';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+// Base URL — set VITE_API_BASE_URL or VITE_API_URL in .env for real backend
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:5000';
 
 export interface GenerateResult {
   content: Record<string, unknown>;
@@ -114,61 +118,85 @@ export async function sendInterviewTurn(params: {
  * Run holistic consistency audit across all approved stage decisions.
  */
 export async function runConsistencyAudit(
-  approvedDecisions: Record<string, unknown>
-): Promise<{ findings: ConsistencyFinding[] }> {
-  const res = await fetch(`${BASE_URL}/api/audit/holistic`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ approved_decisions: approvedDecisions }),
-    signal: AbortSignal.timeout(30_000),
-  });
+  approvedDecisionsOrContext: Record<string, unknown>
+): Promise<{ findings: ConsistencyFinding[]; isMock?: boolean; note?: string }> {
+  const payload = approvedDecisionsOrContext.approved_decisions
+    ? approvedDecisionsOrContext
+    : { approved_decisions: approvedDecisionsOrContext };
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/audit/holistic`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (netErr: any) {
+    throw new Error(netErr?.message || 'Network connection failed. Backend unreachable.');
+  }
 
   if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || `Consistency audit failed with HTTP ${res.status}`);
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.message || `Audit failed with status ${res.status}`);
   }
 
   return res.json();
 }
 
 function toSharedContext(input: SharedContext | Record<string, unknown>): SharedContext {
-  if (input && typeof input === 'object' && 'project_id' in input) {
+  if (input && typeof input === 'object' && 'project_id' in input && 'approved_decisions' in input) {
     return input as SharedContext;
   }
   return {
-    project_id: `proj_${Date.now()}`,
-    user_facts: {},
-    ai_assumptions: {},
-    approved_decisions: (input as any) || {},
-    stage_drafts: {},
-    critic_findings: [],
-    consistency_findings: [],
-    scenario_overrides: [],
-    revision_log: [],
+    project_id: (input as any)?.project_id || `proj_${Date.now()}`,
+    user_facts: (input as any)?.user_facts || {},
+    ai_assumptions: (input as any)?.ai_assumptions || {},
+    approved_decisions: (input as any)?.approved_decisions || input || {},
+    stage_drafts: (input as any)?.stage_drafts || {},
+    critic_findings: (input as any)?.critic_findings || [],
+    consistency_findings: (input as any)?.consistency_findings || [],
+    scenario_overrides: (input as any)?.scenario_overrides || [],
+    revision_log: (input as any)?.revision_log || [],
   };
 }
 
 /**
- * Assemble Brand Kit export bundle from approved decisions.
+ * Brand kit assembly and export API client — routes to real backend POST /api/export
  */
 export async function assembleExport(
   contextOrApproved: SharedContext | Record<string, unknown>,
   consistencyFindings: ConsistencyFinding[] = []
-): Promise<{ content: string; status: 'exported' | 'failed' }> {
+): Promise<{ content: string; status: 'exported' | 'failed'; isMock?: boolean; note?: string }> {
   const context = toSharedContext(contextOrApproved);
-  const res = await fetch(`${BASE_URL}/api/export`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ context, consistency_findings: consistencyFindings }),
-    signal: AbortSignal.timeout(30_000),
-  });
+  const findings = consistencyFindings.length > 0
+    ? consistencyFindings
+    : (Array.isArray((contextOrApproved as any)?.consistency_findings)
+        ? (contextOrApproved as any).consistency_findings
+        : []);
 
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.message || `Export assembly failed with HTTP ${res.status}`);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context, consistency_findings: findings }),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (netErr: any) {
+    throw new Error(netErr?.message || 'Network connection failed. Backend unreachable.');
   }
 
-  return res.json();
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.message || `Export failed with status ${res.status}`);
+  }
+
+  const data = await res.json();
+  return {
+    content: data.content || '',
+    status: data.status === 'success' || data.status === 'exported' ? 'exported' : 'failed',
+  };
 }
 
 /**
@@ -180,16 +208,21 @@ export async function runScenarioProbe(
   contextOrApproved: SharedContext | Record<string, unknown>
 ): Promise<ScenarioProbeResult> {
   const context = toSharedContext(contextOrApproved);
-  const res = await fetch(`${BASE_URL}/api/scenario-probe/run`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      context,
-      triggered_from_stage: triggeredFrom,
-      what_if_input: whatIfInput,
-    }),
-    signal: AbortSignal.timeout(30_000),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/scenario-probe/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        context,
+        triggered_from_stage: triggeredFrom,
+        what_if_input: whatIfInput,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (netErr: any) {
+    throw new Error(netErr?.message || 'Network connection failed. Backend unreachable.');
+  }
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
@@ -198,7 +231,6 @@ export async function runScenarioProbe(
 
   const result = await res.json();
   const override = result.scenario_override || {};
-  const branchDrafts = override.branch_drafts || [];
 
   const changedFields: ScenarioBranchField[] = [];
   const allFindings: CriticFinding[] = [];
