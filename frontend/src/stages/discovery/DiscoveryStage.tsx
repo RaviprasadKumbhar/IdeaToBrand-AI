@@ -70,7 +70,9 @@ export function DiscoveryStage() {
         context: store.ctx,
       });
       store.setDraft('discovery', result.content);
-      store.transitionStage('discovery', 'generate');
+      // Reset to draft then submit to critic (safe from any state)
+      store.transitionStage('discovery', { type: 'RESET_STAGE' });
+      store.transitionStage('discovery', { type: 'SUBMIT_CRITIC' });
 
       // Add critic findings
       const findings: CriticFinding[] = result.findings.map((f) => ({
@@ -81,9 +83,7 @@ export function DiscoveryStage() {
       store.addCriticFindings(findings);
 
       if (findings.length > 0) {
-        store.transitionStage('discovery', 'critic_flag');
-      } else {
-        store.transitionStage('discovery', 'critic_pass');
+        store.transitionStage('discovery', { type: 'CRITIC_FINDINGS_DETECTED' });
       }
     } catch (err: unknown) {
       store.setError('discovery', {

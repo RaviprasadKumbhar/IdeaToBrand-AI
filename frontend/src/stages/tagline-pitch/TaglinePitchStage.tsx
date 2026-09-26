@@ -89,12 +89,16 @@ export function TaglinePitchStage() {
         context: store.ctx,
       });
       store.setDraft('tagline_pitch', result.content);
-      store.transitionStage('tagline_pitch', 'generate');
+      // Reset to draft then submit to critic (safe from any state)
+      store.transitionStage('tagline_pitch', { type: 'RESET_STAGE' });
+      store.transitionStage('tagline_pitch', { type: 'SUBMIT_CRITIC' });
       const newFindings: CriticFinding[] = result.findings.map(f => ({
         ...f, id: f.id ?? uuid(), stage: 'tagline_pitch' as const,
       }));
       store.addCriticFindings(newFindings);
-      store.transitionStage('tagline_pitch', newFindings.length > 0 ? 'critic_flag' : 'critic_pass');
+      if (newFindings.length > 0) {
+        store.transitionStage('tagline_pitch', { type: 'CRITIC_FINDINGS_DETECTED' });
+      }
     } catch (err: unknown) {
       store.setError('tagline_pitch', {
         stage: 'tagline_pitch',
@@ -128,7 +132,7 @@ export function TaglinePitchStage() {
       onReject={() => store.rejectStage('tagline_pitch')}
       onRegenerate={handleGenerate}
       onFindingAction={(id, action) => store.actOnCriticFinding(id, action)}
-      onEdit={() => store.transitionStage('tagline_pitch', 'user_edit')}
+      onEdit={() => store.transitionStage('tagline_pitch', { type: 'USER_EDIT' })}
       needsReviewCause="Naming + Personality"
     >
       {content && (

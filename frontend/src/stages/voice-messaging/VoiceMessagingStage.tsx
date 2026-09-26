@@ -35,12 +35,16 @@ export function VoiceMessagingStage() {
         context: store.ctx,
       });
       store.setDraft('voice_messaging', result.content);
-      store.transitionStage('voice_messaging', 'generate');
+      // Reset to draft then submit to critic (safe from any state)
+      store.transitionStage('voice_messaging', { type: 'RESET_STAGE' });
+      store.transitionStage('voice_messaging', { type: 'SUBMIT_CRITIC' });
       const newFindings: CriticFinding[] = result.findings.map(f => ({
         ...f, id: f.id ?? uuid(), stage: 'voice_messaging' as const,
       }));
       store.addCriticFindings(newFindings);
-      store.transitionStage('voice_messaging', newFindings.length > 0 ? 'critic_flag' : 'critic_pass');
+      if (newFindings.length > 0) {
+        store.transitionStage('voice_messaging', { type: 'CRITIC_FINDINGS_DETECTED' });
+      }
     } catch (err: unknown) {
       store.setError('voice_messaging', {
         stage: 'voice_messaging',
@@ -78,7 +82,7 @@ export function VoiceMessagingStage() {
       onReject={() => store.rejectStage('voice_messaging')}
       onRegenerate={handleGenerate}
       onFindingAction={(id, action) => store.actOnCriticFinding(id, action)}
-      onEdit={() => store.transitionStage('voice_messaging', 'user_edit')}
+      onEdit={() => store.transitionStage('voice_messaging', { type: 'USER_EDIT' })}
       needsReviewCause="Visual Brief"
     >
       {content && (

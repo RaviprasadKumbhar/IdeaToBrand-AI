@@ -116,12 +116,16 @@ export function PositioningStage() {
         context: store.ctx,
       });
       store.setDraft('positioning', result.content);
-      store.transitionStage('positioning', 'generate');
+      // Reset to draft then submit to critic (safe from any state)
+      store.transitionStage('positioning', { type: 'RESET_STAGE' });
+      store.transitionStage('positioning', { type: 'SUBMIT_CRITIC' });
       const newFindings: CriticFinding[] = result.findings.map(f => ({
         ...f, id: f.id ?? uuid(), stage: 'positioning' as const,
       }));
       store.addCriticFindings(newFindings);
-      store.transitionStage('positioning', newFindings.length > 0 ? 'critic_flag' : 'critic_pass');
+      if (newFindings.length > 0) {
+        store.transitionStage('positioning', { type: 'CRITIC_FINDINGS_DETECTED' });
+      }
     } catch (err: unknown) {
       store.setError('positioning', {
         stage: 'positioning',
@@ -173,7 +177,7 @@ export function PositioningStage() {
       onReject={() => store.rejectStage('positioning')}
       onRegenerate={handleGenerate}
       onFindingAction={(id, action) => store.actOnCriticFinding(id, action)}
-      onEdit={() => store.transitionStage('positioning', 'user_edit')}
+      onEdit={() => store.transitionStage('positioning', { type: 'USER_EDIT' })}
       needsReviewCause="Discovery"
     >
       {directions.length > 0 ? (

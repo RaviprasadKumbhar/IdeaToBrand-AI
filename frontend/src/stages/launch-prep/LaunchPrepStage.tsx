@@ -27,12 +27,16 @@ export function LaunchPrepStage() {
         context: store.ctx,
       });
       store.setDraft('launch_prep', result.content);
-      store.transitionStage('launch_prep', 'generate');
+      // Reset to draft then submit to critic (safe from any state)
+      store.transitionStage('launch_prep', { type: 'RESET_STAGE' });
+      store.transitionStage('launch_prep', { type: 'SUBMIT_CRITIC' });
       const newFindings: CriticFinding[] = result.findings.map(f => ({
         ...f, id: f.id ?? uuid(), stage: 'launch_prep' as const,
       }));
       store.addCriticFindings(newFindings);
-      store.transitionStage('launch_prep', newFindings.length > 0 ? 'critic_flag' : 'critic_pass');
+      if (newFindings.length > 0) {
+        store.transitionStage('launch_prep', { type: 'CRITIC_FINDINGS_DETECTED' });
+      }
     } catch (err: unknown) {
       store.setError('launch_prep', {
         stage: 'launch_prep',
@@ -70,7 +74,7 @@ export function LaunchPrepStage() {
       onReject={() => store.rejectStage('launch_prep')}
       onRegenerate={handleGenerate}
       onFindingAction={(id, action) => store.actOnCriticFinding(id, action)}
-      onEdit={() => store.transitionStage('launch_prep', 'user_edit')}
+      onEdit={() => store.transitionStage('launch_prep', { type: 'USER_EDIT' })}
       needsReviewCause="Voice + Messaging"
     >
       {content && (

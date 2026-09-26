@@ -121,7 +121,7 @@ export interface SharedContext {
   approved_decisions: Partial<Record<StageName, ApprovedDecision>>;
   stage_drafts: Partial<Record<StageName, StageDraft>>;
   critic_findings: CriticFinding[];
-  consistency_findings?: ConsistencyFinding[];
+  consistency_findings: ConsistencyFinding[];
   scenario_overrides: ScenarioOverride[];
   revision_log: RevisionLogEntry[];
 }
@@ -161,7 +161,9 @@ export type ApprovalEvent =
   | { type: "UPSTREAM_CHANGED" }
   | { type: "RECHECK_CRITIC" }
   | { type: "VALIDATION_FAILED" }
-  | { type: "RESET_STAGE" };
+  | { type: "RESET_STAGE" }
+  /** User directly edits an approved stage — returns it to draft for re-generation. */
+  | { type: "USER_EDIT" };
 
 export interface StageInput {
   approved_decisions: Partial<Record<StageName, ApprovedDecision>>;

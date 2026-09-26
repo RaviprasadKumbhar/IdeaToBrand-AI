@@ -49,6 +49,9 @@ export function transition(current: ApprovalState, event: ApprovalEvent): Approv
       if (event.type === "CRITIC_NO_FINDINGS") {
         return "approved";
       }
+      if (event.type === "USER_ACCEPT_DRAFT") {
+        return "approved";
+      }
       break;
 
     case "needs_revision":
@@ -66,6 +69,9 @@ export function transition(current: ApprovalState, event: ApprovalEvent): Approv
       }
       if (event.type === "USER_ACCEPT_DRAFT") {
         return "approved"; // Idempotent re-affirmation
+      }
+      if (event.type === "USER_EDIT") {
+        return "draft"; // User directly edits approved stage — re-enters draft cycle
       }
       break;
 
