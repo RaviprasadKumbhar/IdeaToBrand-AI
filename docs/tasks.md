@@ -889,12 +889,12 @@ Stop and resolve the issue if:
 - [ ] Demo UX verified
 
 ### Member 3
-- [ ] Persistence verified
-- [ ] Revision history verified
-- [ ] Export verified
-- [ ] API/integration verified
-- [ ] Security verified
-- [ ] End-to-end QA verified
+- [x] Persistence verified
+- [x] Revision history verified
+- [x] Export verified
+- [x] API/integration verified
+- [x] Security verified
+- [x] End-to-end QA verified
 
 ### All Members
 - [ ] PRD requirements checked
