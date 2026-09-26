@@ -6,12 +6,17 @@
 import type { StageName, CriticFinding, ConsistencyFinding, StageErrorResponse } from '../../../shared/types';
 import { v4 as uuid } from 'uuid';
 
-// Base URL — set VITE_API_BASE_URL in .env for real backend
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
+// Base URL — set VITE_API_BASE_URL or VITE_API_URL in .env for real backend
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  'http://localhost:5000';
 
 export interface GenerateResult {
   content: Record<string, unknown>;
   findings: CriticFinding[];
+  isMock?: boolean;
+  note?: string;
 }
 
 export interface MockFlag {
@@ -19,48 +24,93 @@ export interface MockFlag {
   note: string;
 }
 
-/** [MOCK] Simulate a backend generate + critique call with artificial delay. */
+/**
+ * Stage generation API client — routes to real backend POST /api/stages/:stage/generate
+ */
 export async function generateStage(
   stage: StageName,
-  _context: Record<string, unknown>
-): Promise<GenerateResult & MockFlag> {
-  // Simulate network delay
-  await delay(1500 + Math.random() * 1000);
-
-  // Return mock draft content and findings per stage
-  const mockContent = getMockDraftContent(stage);
-  const mockFindings = getMockFindings(stage);
-
-  return {
-    isMock: true,
-    note: '[MOCK ADAPTER] — Replace with real POST /api/stages/:stage/generate call when backend is available.',
-    content: mockContent,
-    findings: mockFindings,
-  };
+  context: Record<string, unknown>
+): Promise<GenerateResult> {
+  return realGenerateStage(stage, context);
 }
 
-/** [MOCK] Simulate holistic consistency audit. */
+/**
+ * Holistic consistency audit API client — routes to real backend POST /api/audit/holistic
+ */
 export async function runConsistencyAudit(
-  _approvedDecisions: Record<string, unknown>
-): Promise<{ findings: ConsistencyFinding[] } & MockFlag> {
-  await delay(2000);
-  return {
-    isMock: true,
-    note: '[MOCK ADAPTER] — Replace with real POST /api/audit/holistic when backend is available.',
-    findings: getMockConsistencyFindings(),
-  };
+  approvedDecisionsOrContext: Record<string, unknown>
+): Promise<{ findings: ConsistencyFinding[]; isMock?: boolean; note?: string }> {
+  const payload = approvedDecisionsOrContext.approved_decisions
+    ? approvedDecisionsOrContext
+    : { approved_decisions: approvedDecisionsOrContext };
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/audit/holistic`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (netErr: any) {
+    throw new Error(netErr?.message || 'Network connection failed. Backend unreachable.');
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.message || `Audit failed with status ${res.status}`);
+  }
+
+  return res.json();
 }
 
-/** [MOCK] Simulate export assembly. */
+/**
+ * Brand kit assembly and export API client — routes to real backend POST /api/export
+ */
 export async function assembleExport(
-  _approvedDecisions: Record<string, unknown>
-): Promise<{ content: string; status: 'exported' | 'failed' } & MockFlag> {
-  await delay(1000);
+  contextOrApproved: Record<string, unknown>,
+  consistencyFindings: ConsistencyFinding[] = []
+): Promise<{ content: string; status: 'exported' | 'failed'; isMock?: boolean; note?: string }> {
+  const context = (contextOrApproved.approved_decisions && contextOrApproved.project_id)
+    ? contextOrApproved
+    : {
+        project_id: (contextOrApproved as any).project_id || 'proj_export',
+        user_facts: (contextOrApproved as any).user_facts || {},
+        ai_assumptions: (contextOrApproved as any).ai_assumptions || {},
+        approved_decisions: (contextOrApproved as any).approved_decisions || contextOrApproved,
+        stage_drafts: (contextOrApproved as any).stage_drafts || {},
+        critic_findings: (contextOrApproved as any).critic_findings || [],
+        scenario_overrides: (contextOrApproved as any).scenario_overrides || [],
+        revision_log: (contextOrApproved as any).revision_log || [],
+      };
+
+  const findings = consistencyFindings.length > 0
+    ? consistencyFindings
+    : (Array.isArray((contextOrApproved as any).consistency_findings)
+        ? (contextOrApproved as any).consistency_findings
+        : []);
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context, consistency_findings: findings }),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (netErr: any) {
+    throw new Error(netErr?.message || 'Network connection failed. Backend unreachable.');
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.message || `Export failed with status ${res.status}`);
+  }
+
+  const data = await res.json();
   return {
-    isMock: true,
-    note: '[MOCK ADAPTER] — Replace with real POST /api/export when backend is available.',
-    content: '# IdeaToBrand AI — Brand Kit\n\n[Export assembled from approved decisions]\n',
-    status: 'exported',
+    content: data.content || '',
+    status: data.status === 'success' || data.status === 'exported' ? 'exported' : 'failed',
   };
 }
 
@@ -139,19 +189,32 @@ export async function realGenerateStage(
   stage: StageName,
   context: Record<string, unknown>
 ): Promise<GenerateResult> {
-  const res = await fetch(`${BASE_URL}/api/stages/${stage}/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(context),
-    signal: AbortSignal.timeout(30_000),
-  });
-  if (!res.ok) {
-    const err: StageErrorResponse = await res.json().catch(() => ({
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}/api/stages/${stage}/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(context),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (netErr: any) {
+    const err: StageErrorResponse = {
       stage,
       error_type: 'provider_unavailable',
-      message: `HTTP ${res.status}`,
+      message: netErr?.message || 'Network connection failed. Backend service unreachable.',
       retryable: true,
-    }));
+    };
+    throw err;
+  }
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => null);
+    const err: StageErrorResponse = {
+      stage,
+      error_type: errData?.error_type || 'provider_unavailable',
+      message: errData?.message || `HTTP ${res.status}`,
+      retryable: errData?.retryable ?? true,
+    };
     throw err;
   }
   return res.json();

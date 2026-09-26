@@ -185,8 +185,11 @@ export function ChatWorkspace() {
       const targetStage = currentWorkingStage;
       const res = await generateStage(targetStage, {
         user_message: textToSend,
-        ...ctx.user_facts,
-        ...ctx.approved_decisions,
+        idea_text: ctx.user_facts?.business_description || textToSend,
+        business_description: ctx.user_facts?.business_description || textToSend,
+        user_facts: ctx.user_facts,
+        approved_decisions: ctx.approved_decisions,
+        context: ctx,
       });
 
       const assistantMsg: ChatMessage = {

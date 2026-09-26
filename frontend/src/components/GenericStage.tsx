@@ -30,14 +30,22 @@ export function GenericStage({ stage, stageNumber, title, description, children 
     store.setLoading(stage, true);
     store.setError(stage, null);
     try {
-      const result = await generateStage(stage, { approved_decisions: store.ctx.approved_decisions });
+      const result = await generateStage(stage, {
+        approved_decisions: store.ctx.approved_decisions,
+        user_facts: store.ctx.user_facts,
+        context: store.ctx,
+      });
       store.setDraft(stage, result.content);
-      store.transitionStage(stage, 'generate');
+      // Reset to draft then submit to critic (safe from any state)
+      store.transitionStage(stage, { type: 'RESET_STAGE' });
+      store.transitionStage(stage, { type: 'SUBMIT_CRITIC' });
       const newFindings: CriticFinding[] = result.findings.map(f => ({
         ...f, id: f.id ?? uuid(), stage,
       }));
       store.addCriticFindings(newFindings);
-      store.transitionStage(stage, newFindings.length > 0 ? 'critic_flag' : 'critic_pass');
+      if (newFindings.length > 0) {
+        store.transitionStage(stage, { type: 'CRITIC_FINDINGS_DETECTED' });
+      }
     } catch (err: unknown) {
       store.setError(stage, {
         stage, error_type: 'provider_unavailable',
@@ -63,7 +71,7 @@ export function GenericStage({ stage, stageNumber, title, description, children 
       onReject={() => store.rejectStage(stage)}
       onRegenerate={handleGenerate}
       onFindingAction={(id, action) => store.actOnCriticFinding(id, action)}
-      onEdit={() => store.transitionStage(stage, 'user_edit')}
+      onEdit={() => store.transitionStage(stage, { type: 'USER_EDIT' })}
     >
       {content ? children(content) : null}
     </StageScreen>
