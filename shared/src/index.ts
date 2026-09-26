@@ -1,5 +1,5 @@
 export * from "./types/index.js";
-export * from "./types/stages.js";
+export * from "./schemas/index.js";
 export * from "./dependency-map.js";
 export * from "./config/env.js";
 export * from "./store/sessionStorage.js";

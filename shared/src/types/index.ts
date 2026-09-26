@@ -1,8 +1,4 @@
-/**
- * FOIL Canonical Domain Contracts
- * Single source of truth across Frontend, Backend, and Shared packages.
- * Defined in docs/architecture.md Sections 6 and 7.
- */
+import type { ZodSchema } from "zod";
 
 export type StageName =
   | "discovery"
@@ -28,7 +24,7 @@ export interface StageDraft {
   stage: StageName;
   content: Record<string, unknown>;
   generated_at: string;
-  attempt: number; // 1-based; caps at 2 automatic retries
+  attempt: number;
 }
 
 export type ApprovedDecisionSource =
@@ -41,7 +37,7 @@ export interface ApprovedDecision {
   stage: StageName;
   content: Record<string, unknown>;
   approved_at: string;
-  state: "approved";
+  state: ApprovalState;
   source: ApprovedDecisionSource;
 }
 
@@ -61,7 +57,17 @@ export interface CriticFinding {
   issue_type: CriticIssueType;
   evidence: string;
   explanation: string;
-  sharper_alternative: string; // required; a finding without one is invalid
+  sharper_alternative: string;
+  user_action: CriticUserAction;
+}
+
+export interface ConsistencyFinding {
+  id: string;
+  fields_in_conflict: string[];
+  issue_type: CriticIssueType;
+  evidence: string;
+  why_it_matters: string;
+  sharper_alternative: string;
   user_action: CriticUserAction;
 }
 
@@ -93,24 +99,6 @@ export interface RevisionLogEntry {
   timestamp: string;
 }
 
-export interface ConsistencyFinding {
-  id: string;
-  fields_in_conflict: string[];
-  issue_type: CriticIssueType;
-  evidence: string;
-  why_it_matters: string;
-  sharper_alternative: string;
-  user_action: CriticUserAction;
-}
-
-export interface ExportBundle {
-  generated_at: string;
-  format: "markdown" | "pdf";
-  content: string;
-  status: "exported" | "failed";
-  failure_reason?: string;
-}
-
 export interface SharedContext {
   project_id: string;
   user_facts: Record<string, unknown>;
@@ -120,6 +108,12 @@ export interface SharedContext {
   critic_findings: CriticFinding[];
   scenario_overrides: ScenarioOverride[];
   revision_log: RevisionLogEntry[];
+}
+
+export interface Project {
+  project_id: string;
+  created_at: string;
+  context: SharedContext;
 }
 
 export type ErrorType =
@@ -145,3 +139,161 @@ export type ApprovalEvent =
   | { type: "RECHECK_CRITIC" }
   | { type: "VALIDATION_FAILED" }
   | { type: "RESET_STAGE" };
+
+export interface StageInput {
+  approved_decisions: Partial<Record<StageName, ApprovedDecision>>;
+  scenario_override?: ScenarioOverride;
+  raw_input?: string;
+}
+
+export interface StageOutput {
+  stage: StageName;
+  content: Record<string, unknown>;
+}
+
+export interface CriticOutput {
+  findings: CriticFinding[];
+}
+
+export interface ApprovalAction {
+  stage: StageName;
+  action: "approve" | "edit" | "reject_and_regenerate";
+  edited_content?: Record<string, unknown>;
+}
+
+export interface StageDefinition<TInput, TOutput> {
+  stage: StageName;
+  requiredApprovedStages: StageName[];
+  buildStrategistPrompt: (input: TInput) => string;
+  outputSchema: ZodSchema<TOutput>;
+  buildCriticPrompt: (draft: TOutput, input: TInput) => string;
+  criticFindingSchema: ZodSchema<CriticFinding[]>;
+  maxAutoRetries: 2;
+}
+
+export interface ExportBundle {
+  generated_at: string;
+  format: "markdown" | "pdf";
+  content: string;
+  status: "exported" | "failed";
+  failure_reason?: string;
+}
+
+/* Stage-specific data interfaces */
+
+export interface DiscoveryContent {
+  core_problem: string;
+  target_audience: string;
+  context_situation: string;
+  user_goals: string;
+  constraints: string;
+  value_desired_outcome: string;
+  open_questions: string[];
+  known_facts: string[];
+  inferred_assumptions: Array<{ value: string; rationale: string }>;
+}
+
+export interface PositioningDirection {
+  title: string;
+  category: string;
+  target_audience: string;
+  core_problem: string;
+  differentiator: string;
+  value_proposition: string;
+  competitive_angle: string;
+  strategic_rationale: string;
+  potential_weakness: string;
+  critic_findings?: CriticFinding[];
+}
+
+export interface ApprovedPositioningContent extends PositioningDirection {
+  rejected_directions?: PositioningDirection[];
+}
+
+export interface PositioningContent {
+  directions: PositioningDirection[];
+  selected_direction?: PositioningDirection;
+  rejected_directions?: PositioningDirection[];
+  title?: string;
+  category?: string;
+  target_audience?: string;
+  core_problem?: string;
+  differentiator?: string;
+  value_proposition?: string;
+  competitive_angle?: string;
+  strategic_rationale?: string;
+  potential_weakness?: string;
+}
+
+export interface NamingDirection {
+  territory: string;
+  proposed_name: string;
+  rationale: string;
+  relationship_to_audience: string;
+  relationship_to_positioning: string;
+  potential_concern: string;
+  critic_analysis?: string;
+  sharper_alternative?: string;
+}
+
+export interface PersonalityTrait {
+  trait: string;
+  audience_justification: string;
+}
+
+export interface BrandPrinciple {
+  principle: string;
+  rationale: string;
+}
+
+export interface NamingPersonalityContent {
+  selected_name?: NamingDirection | string;
+  proposed_name?: string;
+  naming_directions: NamingDirection[];
+  personality_traits: PersonalityTrait[];
+  traits_to_avoid: string[];
+  brand_principles: BrandPrinciple[];
+  critic_findings?: CriticFinding[];
+}
+
+export interface TaglinePitchContent {
+  selected_tagline?: string;
+  tagline_options: string[];
+  one_line_pitch: string;
+  rationale_per_tagline: string[];
+  critic_findings?: CriticFinding[];
+}
+
+export interface VisualBriefContent {
+  logo_direction: string;
+  color_mood: string;
+  hex_palette: string[];
+  type_roles: string[];
+  shape_language: string;
+  symbol_language: string;
+  composition_layout: string;
+  imagery_direction: string;
+  concepts_to_avoid: string[];
+  rationale_linking_to_audience_and_positioning: string;
+  concept_disclaimer?: string;
+}
+
+export interface SampleMessage {
+  message: string;
+  explanation: string;
+}
+
+export interface VoiceMessagingContent {
+  voice_description: string;
+  tone_characteristics: string[];
+  do_list: string[];
+  dont_list: string[];
+  sample_messages: SampleMessage[];
+  critic_findings?: CriticFinding[];
+}
+
+export interface LaunchPrepContent {
+  landing_headline: string;
+  social_launch_post: string;
+  critic_findings?: CriticFinding[];
+}
