@@ -160,9 +160,19 @@ describe("T-037: Backend Integration API Endpoints", () => {
     expect(res.json.message).toContain("Discovery");
   });
 
-  it("POST /api/audit/holistic returns 200 with consistency findings array", async () => {
+  it("POST /api/audit/holistic returns 200 with consistency findings array when all stages are approved", async () => {
+    let ctx = createInitialSharedContext("audit_200_test");
+    const dummyContent = { title: "Approved Content", sample: "valid" };
+    ctx = writeApprovedDecision(ctx, "discovery", dummyContent, "strategist_approved", "init");
+    ctx = writeApprovedDecision(ctx, "positioning", dummyContent, "strategist_approved", "init");
+    ctx = writeApprovedDecision(ctx, "naming_personality", dummyContent, "strategist_approved", "init");
+    ctx = writeApprovedDecision(ctx, "tagline_pitch", dummyContent, "strategist_approved", "init");
+    ctx = writeApprovedDecision(ctx, "visual_brief", dummyContent, "strategist_approved", "init");
+    ctx = writeApprovedDecision(ctx, "voice_messaging", dummyContent, "strategist_approved", "init");
+    ctx = writeApprovedDecision(ctx, "launch_prep", dummyContent, "strategist_approved", "init");
+
     const res = await testRequest("POST", "/api/audit/holistic", {
-      approved_decisions: {},
+      approved_decisions: ctx.approved_decisions,
     });
 
     expect(res.status).toBe(200);

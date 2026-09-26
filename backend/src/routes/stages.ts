@@ -176,27 +176,6 @@ stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response)
 });
 
 /**
- * POST /api/audit/holistic
- * T-031 Holistic Consistency Audit endpoint.
- */
-stagesRouter.post("/audit/holistic", async (req: Request, res: Response) => {
-  const payload = req.body || {};
-  const approvedDecisions = payload.approved_decisions || payload.context?.approved_decisions || {};
-  const provider = getAIProvider();
-
-  try {
-    const findings = await criticEngine.auditWholeSystem(approvedDecisions, provider);
-    return res.status(200).json({ findings });
-  } catch (err: any) {
-    return res.status(500).json({
-      error_type: err.error_type || err.errorType || "audit_failed",
-      message: err.message || "Holistic consistency audit execution failed",
-      retryable: err.retryable ?? false,
-    });
-  }
-});
-
-/**
  * POST /api/scenario-probe
  * T-029 Scenario Probe backend endpoint.
  * Runs isolated branch exploration without overwriting the authoritative approved decisions.
