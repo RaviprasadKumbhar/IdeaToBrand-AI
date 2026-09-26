@@ -1,6 +1,7 @@
 /**
  * UI tests for IdeaInput form (T-014, T-040).
- * Tests: validation, accessible labels, input preservation, user-fact labeling.
+ * Tests: validation, accessible labels, input preservation, user-fact separation,
+ * absence of 500-word caps, and optional context.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -38,61 +39,45 @@ describe('IdeaInput form', () => {
     expect(textarea).toBeInTheDocument();
   });
 
-  it('shows word count', async () => {
+  it('allows unconstrained typing without 500-word limit', async () => {
     renderIdeaInput();
     const textarea = screen.getByLabelText(/your idea or business description/i);
-    await userEvent.type(textarea, 'Hello world test');
-    expect(screen.getByText(/3 \/ 500 words/i)).toBeInTheDocument();
+    expect(textarea).not.toHaveAttribute('maxLength');
+    expect(screen.queryByText(/500 words/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/write freely without word count restrictions\./i)).toBeInTheDocument();
   });
 
   it('shows validation error when description is too short', async () => {
     renderIdeaInput();
     const textarea = screen.getByLabelText(/your idea or business description/i);
     await userEvent.type(textarea, 'Hi');
-    // form.submit() bypasses the disabled check so validation runs
     const form = textarea.closest('form')!;
     fireEvent.submit(form);
-    expect(await screen.findByText(/at least 5 words/i)).toBeInTheDocument();
+    expect(await screen.findByText(/at least a few words/i)).toBeInTheDocument();
   });
 
-  it('shows validation error when description is too short (submit via form)', async () => {
+  it('Begin Brand Strategy button is disabled when textarea is empty', () => {
     renderIdeaInput();
-    const textarea = screen.getByLabelText(/your idea or business description/i);
-    await userEvent.type(textarea, 'Hi there');
-    const form = textarea.closest('form')!;
-    fireEvent.submit(form);
-    // 2 words — should pass word count but still short
-  });
-
-  it('Start Discovery button is disabled when textarea is empty', () => {
-    renderIdeaInput();
-    const btn = screen.getByRole('button', { name: /start discovery/i });
+    const btn = screen.getByRole('button', { name: /begin brand strategy/i });
     expect(btn).toBeDisabled();
   });
 
-  it('Start Discovery button is enabled after typing', async () => {
+  it('Begin Brand Strategy button is enabled after typing', async () => {
     renderIdeaInput();
     const textarea = screen.getByLabelText(/your idea or business description/i);
-    await userEvent.type(textarea, 'Hello world this is a test');
-    const btn = screen.getByRole('button', { name: /start discovery/i });
+    await userEvent.type(textarea, 'Hello world this is a test idea');
+    const btn = screen.getByRole('button', { name: /begin brand strategy/i });
     expect(btn).not.toBeDisabled();
   });
 
   it('shows validation error on form submit when empty textarea is forced', async () => {
     renderIdeaInput();
     const textarea = screen.getByLabelText(/your idea or business description/i);
-    // Type then clear to enable submit, then clear it
     await userEvent.type(textarea, 'test');
     await userEvent.clear(textarea);
-    await userEvent.type(textarea, 'hi');
     const form = textarea.closest('form')!;
     fireEvent.submit(form);
-    expect(await screen.findByText(/at least 5 words/i)).toBeInTheDocument();
-  });
-
-  it('shows user-fact notice in the form', () => {
-    renderIdeaInput();
-    expect(screen.getByText(/user-provided facts/i)).toBeInTheDocument();
+    expect(await screen.findByText(/please provide a description/i)).toBeInTheDocument();
   });
 
   it('optional context section can be expanded', async () => {
@@ -100,6 +85,8 @@ describe('IdeaInput form', () => {
     const expandBtn = screen.getByRole('button', { name: /optional context/i });
     await userEvent.click(expandBtn);
     expect(screen.getByLabelText(/target audience/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/category or industry/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/constraints or rules/i)).toBeInTheDocument();
   });
 
   it('optional audience field has accessible label', async () => {

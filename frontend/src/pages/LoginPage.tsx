@@ -1,6 +1,6 @@
 /**
- * LoginPage — Supabase Email/Password Authentication.
- * Includes password visibility toggle, accessible error alerts, and demo session option.
+ * LoginPage — Supabase Email and Password Authentication.
+ * Clean, accessible authentication view without demo bypasses.
  */
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signInDemo, isConfigured } = useAuth();
+  const { signIn, isConfigured } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,7 +17,6 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Preserve intended destination after login
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/workspace';
 
   async function handleSubmit(e: FormEvent) {
@@ -40,13 +39,6 @@ export function LoginPage() {
     }
   }
 
-  async function handleDemoSignIn() {
-    setLoading(true);
-    await signInDemo();
-    setLoading(false);
-    navigate(from, { replace: true });
-  }
-
   return (
     <div className="min-h-screen bg-paper-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-accent-100 selection:text-accent-700">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
@@ -64,9 +56,9 @@ export function LoginPage() {
           Sign in to your brand workspace
         </h2>
         <p className="mt-1.5 text-xs text-ink-500">
-          Or{' '}
+          New to IdeaToBrand AI?{' '}
           <Link to="/signup" className="font-semibold text-accent-600 hover:underline">
-            create a new account
+            Create an account
           </Link>
         </p>
       </div>
@@ -76,10 +68,10 @@ export function LoginPage() {
           {!isConfigured && (
             <div className="mb-5 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 space-y-1">
               <p className="font-bold flex items-center gap-1.5">
-                <span>ℹ</span> Supabase Environment Notice
+                <span>ℹ</span> Supabase Environment Configuration
               </p>
               <p>
-                <code className="bg-amber-100/60 px-1 py-0.5 rounded text-[11px]">VITE_SUPABASE_ANON_KEY</code> is not yet configured. You can use <strong>Instant Demo Sign In</strong> to access the workspace.
+                <code className="bg-amber-100/60 px-1 py-0.5 rounded text-[11px]">VITE_SUPABASE_ANON_KEY</code> is required to authenticate against the live Supabase project.
               </p>
             </div>
           )}
@@ -133,26 +125,23 @@ export function LoginPage() {
               />
             </div>
 
+            <div className="flex items-center justify-between pt-1">
+              <Link
+                to="/forgot-password"
+                className="text-xs font-medium text-accent-600 hover:text-accent-700 hover:underline"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full py-2.5 text-sm font-semibold tracking-wide disabled:opacity-50"
+              className="btn-primary w-full py-2.5 text-sm font-semibold tracking-wide disabled:opacity-50 mt-2"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
-
-          {/* Quick Demo Access Option */}
-          <div className="mt-5 pt-5 border-t border-border">
-            <button
-              type="button"
-              onClick={handleDemoSignIn}
-              disabled={loading}
-              className="w-full btn-secondary py-2 text-xs font-semibold text-accent-700 border-indigo-100 hover:bg-accent-100/50"
-            >
-              ⚡ Instant Demo Sign In (Explore Workspace)
-            </button>
-          </div>
         </div>
       </div>
     </div>

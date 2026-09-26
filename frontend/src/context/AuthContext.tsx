@@ -1,10 +1,17 @@
 /**
- * AuthContext — Provides Supabase authentication state and operations across the app.
- * Listens to onAuthStateChange and manages loading states gracefully.
+ * AuthContext — Authentic Supabase Session Provider.
+ * Zero demo account bypasses. Provides real user session, login, signup,
+ * password reset, and sign-out lifecycle.
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import type { User, Session, AuthError } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured, signOutUser } from '../lib/supabase';
+import {
+  supabase,
+  isSupabaseConfigured,
+  signOutUser,
+  resetPasswordForEmail,
+  updateUserPassword,
+} from '../lib/supabase';
 import { AuthContext } from './authContextInstance';
 
 // oxlint-disable-next-line react/only-export-components
@@ -21,15 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function initAuth() {
       try {
         if (!isSupabaseConfigured) {
-          // Check for saved demo session
-          const savedDemo = localStorage.getItem('ideatobrand_demo_session');
-          if (savedDemo) {
-            const parsed = JSON.parse(savedDemo);
-            if (mounted) {
-              setSession(parsed);
-              setUser(parsed.user);
-            }
-          }
           if (mounted) setLoading(false);
           return;
         }
@@ -44,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
         }
 
-        // Listen for auth state changes
+        // Real-time listener for login, logout, token refresh, and password recovery events
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
           if (mounted) {
             setSession(newSession);
@@ -73,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       return {
         error: new Error(
-          'Supabase credentials not configured in environment. Please provide VITE_SUPABASE_ANON_KEY or use Demo Sign In.'
+          'Supabase environment is not configured. Please supply VITE_SUPABASE_ANON_KEY.'
         ),
       };
     }
@@ -93,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isSupabaseConfigured) {
       return {
         error: new Error(
-          'Supabase credentials not configured in environment. Please set VITE_SUPABASE_ANON_KEY or use Demo Sign In.'
+          'Supabase environment is not configured. Please supply VITE_SUPABASE_ANON_KEY.'
         ),
       };
     }
@@ -111,34 +109,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   }
 
-  async function signInDemo(email = 'founder@ideatobrand.ai'): Promise<void> {
-    const demoUser = {
-      id: 'demo-user-id-001',
-      app_metadata: {},
-      user_metadata: { full_name: 'Brand Strategist' },
-      aud: 'authenticated',
-      created_at: new Date().toISOString(),
-      email,
-    } as unknown as User;
-
-    const demoSession = {
-      access_token: 'demo-token',
-      token_type: 'bearer',
-      expires_in: 3600,
-      refresh_token: 'demo-refresh',
-      user: demoUser,
-    } as unknown as Session;
-
-    localStorage.setItem('ideatobrand_demo_session', JSON.stringify(demoSession));
-    setSession(demoSession);
-    setUser(demoUser);
-  }
-
   async function signOut(): Promise<void> {
     await signOutUser();
-    localStorage.removeItem('ideatobrand_demo_session');
     setSession(null);
     setUser(null);
+  }
+
+  async function resetPassword(email: string): Promise<{ error: AuthError | Error | null }> {
+    return await resetPasswordForEmail(email);
+  }
+
+  async function updatePassword(newPassword: string): Promise<{ error: AuthError | Error | null }> {
+    return await updateUserPassword(newPassword);
   }
 
   return (
@@ -151,11 +133,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
-        signInDemo,
+        resetPassword,
+        updatePassword,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
-
