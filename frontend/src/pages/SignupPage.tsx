@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 
 export function SignupPage() {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, isConfigured } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -40,11 +40,13 @@ export function SignupPage() {
     setLoading(true);
     setError(null);
 
-    const { error: authError } = await signUp(email.trim(), password, fullName.trim() || undefined);
+    const { error: authError, session: newSession } = await signUp(email.trim(), password, fullName.trim() || undefined);
     setLoading(false);
 
     if (authError) {
       setError(authError.message || 'Failed to create account.');
+    } else if (newSession) {
+      navigate('/workspace');
     } else {
       // If email confirmation is required by Supabase project
       setVerificationSent(true);
@@ -77,6 +79,13 @@ export function SignupPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="card bg-white p-7 border-border shadow-card">
+          {!isConfigured && (
+            <div className="mb-4 p-3 rounded-lg bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex items-start gap-2">
+              <span className="font-bold text-accent-600">⚡ Dev Mode:</span>
+              <span>Local authentication active. You can create an account and sign in immediately to explore all workspace stages.</span>
+            </div>
+          )}
+
           {error && (
             <div role="alert" className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
               <span className="font-bold text-red-500">✕</span>
