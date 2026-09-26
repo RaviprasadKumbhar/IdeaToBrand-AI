@@ -5,6 +5,7 @@ import { validateEnvironment } from "@foil/shared";
 import { exportRouter } from "./routes/export.js";
 import { stagesRouter } from "./routes/stages.js";
 import { scenarioProbeRouter } from "./routes/scenarioProbe.js";
+import { auditRouter } from "./routes/audit.js";
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api", exportRouter);
 app.use("/api", stagesRouter);
 app.use("/api", scenarioProbeRouter);
+app.use("/api", auditRouter);
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {

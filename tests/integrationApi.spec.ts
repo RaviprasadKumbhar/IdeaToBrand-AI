@@ -268,5 +268,49 @@ describe("T-037: Backend Integration API Endpoints", () => {
     expect(res.json.context.revision_log.length).toBe(2);
     expect(res.json.context.revision_log[1].cause).toBe("scenario_accept");
   });
+
+  it("POST /api/audit/holistic returns 409 when Launch Prep is missing", async () => {
+    const ctx = createInitialSharedContext("audit_gate_api_test");
+    // Only discovery approved; launch_prep missing
+    const res = await testRequest("POST", "/api/audit/holistic", {
+      approved_decisions: {
+        discovery: { stage: "discovery", content: { problem: "P" }, state: "approved", approved_at: new Date().toISOString(), source: "strategist_approved" },
+      },
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.json.error_type).toBe("audit_gated");
+    expect(res.json.message).toContain("Holistic Consistency Audit");
+  });
+
+  it("POST /api/audit/resolve updates finding resolution and returns updated context", async () => {
+    let ctx = createInitialSharedContext("audit_resolve_api_test");
+    ctx = writeApprovedDecision(ctx, "tagline_pitch", { tagline_options: ["Old Tagline"] }, "strategist_approved", "init");
+
+    const findings = [
+      {
+        id: "cons-resolve-1",
+        fields_in_conflict: ["tagline_pitch.tagline_options"],
+        issue_type: "cliche",
+        evidence: "Tagline is weak",
+        why_it_matters: "Hurts brand",
+        sharper_alternative: "Sharp New Tagline",
+        user_action: null,
+      },
+    ];
+
+    const res = await testRequest("POST", "/api/audit/resolve", {
+      context: ctx,
+      findings,
+      finding_id: "cons-resolve-1",
+      action: "accept",
+      resolution: { targetStage: "tagline_pitch" },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.json.updatedFindings[0].user_action).toBe("accept");
+    expect(res.json.updatedContext.revision_log.length).toBe(2);
+    expect(res.json.updatedContext.revision_log[1].cause).toBe("consistency_finding_accept");
+  });
 });
 

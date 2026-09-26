@@ -724,34 +724,34 @@ Each participant completes their own required submission where applicable.
 # 25. Final P0 Checklist
 
 - [ ] Idea Input works
-- [ ] Discovery works
-- [ ] Facts and assumptions are separated
-- [ ] Positioning produces at least 2 genuinely divergent directions
-- [ ] Naming + Personality works
-- [ ] Tagline + Pitch works
-- [ ] Visual Brief contains all required fields
-- [ ] Visual Brief is labeled as concept/design direction
-- [ ] Voice + Messaging works
-- [ ] Launch Prep works
-- [ ] Holistic Consistency Audit runs AFTER Launch Prep
-- [ ] Audit checks the complete approved brand system
-- [ ] Every audit finding has a sharper alternative
-- [ ] Unresolved required audit findings block export
-- [ ] Strategist and Critic roles are separate
-- [ ] No third AI agent exists
-- [ ] Shared context is authoritative
-- [ ] `approved_decisions` cannot be silently overwritten
-- [ ] Explicit user approval is required
-- [ ] Revision history works
+- [x] Discovery works
+- [x] Facts and assumptions are separated
+- [x] Positioning produces at least 2 genuinely divergent directions
+- [x] Naming + Personality works
+- [x] Tagline + Pitch works
+- [x] Visual Brief contains all required fields
+- [x] Visual Brief is labeled as concept/design direction
+- [x] Voice + Messaging works
+- [x] Launch Prep works
+- [x] Holistic Consistency Audit runs AFTER Launch Prep
+- [x] Audit checks the complete approved brand system
+- [x] Every audit finding has a sharper alternative
+- [x] Unresolved required audit findings block export
+- [x] Strategist and Critic roles are separate
+- [x] No third AI agent exists
+- [x] Shared context is authoritative
+- [x] `approved_decisions` cannot be silently overwritten
+- [x] Explicit user approval is required
+- [x] Revision history works
 - [x] Dependency-aware review works
 - [x] Scenario Probe does not silently overwrite the original
 - [x] Scenario Probe supports accept/keep/edit
-- [ ] AI output is schema validated
-- [ ] Retry limits are enforced
-- [ ] Failed AI output is visible
-- [ ] No fake success exists
-- [ ] No unsupported trademark/domain claims are presented as verified
-- [ ] Export contains approved content only
+- [x] AI output is schema validated
+- [x] Retry limits are enforced
+- [x] Failed AI output is visible
+- [x] No fake success exists
+- [x] No unsupported trademark/domain claims are presented as verified
+- [x] Export contains approved content only
 - [ ] Markdown export works
 - [ ] End-to-end workflow works without manual backend manipulation
 - [ ] Demo uses the real product
@@ -873,12 +873,12 @@ Stop and resolve the issue if:
 # 31. Final Team Sign-Off
 
 ### Member 1
-- [ ] AI workflow verified
-- [ ] Strategist verified
-- [ ] Critic verified
+- [x] AI workflow verified
+- [x] Strategist verified
+- [x] Critic verified
 - [x] Dependency behavior verified
 - [x] Scenario Probe verified
-- [ ] Consistency Audit verified
+- [x] Consistency Audit verified
 
 ### Member 2
 - [ ] UI workflow verified
