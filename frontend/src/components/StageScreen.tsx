@@ -217,7 +217,7 @@ export function StageScreen({
           <div>
             <h2 className="text-h3 text-ink-950 font-semibold mb-1">Ready to generate</h2>
             <p className="text-body text-ink-500 max-w-sm">
-              FOIL will generate a strategic draft for this stage and send it through the Critic.
+              IdeaToBrand AI will generate a strategic draft for this stage and send it through the Critic.
             </p>
           </div>
           <button

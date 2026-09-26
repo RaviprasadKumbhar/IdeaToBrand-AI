@@ -103,7 +103,7 @@ const LAUNCH_PREP_FIXTURE: LaunchPrepContent = {
 
 const mockWriteApproved = vi.fn();
 const mockReject = vi.fn();
-const mockRegenerate = vi.fn();
+const _mockRegenerate = vi.fn();
 const mockActOnFinding = vi.fn();
 const mockTransition = vi.fn();
 

@@ -1,4 +1,14 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+/**
+ * App — Root Application with Supabase AuthProvider, Public Landing & Auth Pages,
+ * and Authenticated Conversational Chat Workspace.
+ */
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { LandingPage } from './pages/LandingPage';
+import { LoginPage } from './pages/LoginPage';
+import { SignupPage } from './pages/SignupPage';
+import { ChatWorkspace } from './components/chat/ChatWorkspace';
 import { AppShell } from './components/AppShell';
 import { IdeaInput } from './stages/idea-input/IdeaInput';
 import { DiscoveryStage } from './stages/discovery/DiscoveryStage';
@@ -14,32 +24,162 @@ import { ScenarioProbePage } from './stages/scenario-probe/ScenarioProbePage';
 
 function NotFound() {
   return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-      <p className="text-5xl font-bold text-ink-950">404</p>
-      <p className="text-body text-ink-500">Page not found.</p>
+    <div className="min-h-screen flex flex-col items-center justify-center py-20 px-4 gap-4 text-center bg-paper-50">
+      <p className="text-6xl font-extrabold text-ink-950">404</p>
+      <h2 className="text-xl font-bold text-ink-800">Page not found</h2>
+      <p className="text-sm text-ink-500 max-w-sm">
+        The page you are looking for does not exist or has been moved.
+      </p>
+      <div className="pt-2 flex items-center gap-3">
+        <Link to="/" className="btn-secondary text-xs px-4 py-2">
+          ← Back to Home
+        </Link>
+        <Link to="/workspace" className="btn-primary text-xs px-4 py-2">
+          Open Workspace
+        </Link>
+      </div>
     </div>
   );
 }
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppShell>
+    <AuthProvider>
+      <BrowserRouter>
         <Routes>
-          <Route path="/"                    element={<IdeaInput />} />
-          <Route path="/discovery"           element={<DiscoveryStage />} />
-          <Route path="/positioning"         element={<PositioningStage />} />
-          <Route path="/naming-personality"  element={<NamingPersonalityStage />} />
-          <Route path="/tagline-pitch"       element={<TaglinePitchStage />} />
-          <Route path="/visual-brief"        element={<VisualBriefStage />} />
-          <Route path="/voice-messaging"     element={<VoiceMessagingStage />} />
-          <Route path="/launch-prep"         element={<LaunchPrepStage />} />
-          <Route path="/consistency-audit"   element={<ConsistencyAuditStage />} />
-          <Route path="/scenario-probe"      element={<ScenarioProbePage />} />
-          <Route path="/export"              element={<KitExportStage />} />
-          <Route path="*"                    element={<NotFound />} />
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+
+          {/* Authenticated Conversational Workspace */}
+          <Route
+            path="/workspace"
+            element={
+              <ProtectedRoute>
+                <ChatWorkspace />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/chat" element={<Navigate to="/workspace" replace />} />
+          <Route path="/app" element={<Navigate to="/workspace" replace />} />
+
+          {/* Deep-Dive Stage Views (Preserved with AppShell) */}
+          <Route
+            path="/idea-input"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <IdeaInput />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/discovery"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <DiscoveryStage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/positioning"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <PositioningStage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/naming-personality"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <NamingPersonalityStage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tagline-pitch"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <TaglinePitchStage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/visual-brief"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <VisualBriefStage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/voice-messaging"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <VoiceMessagingStage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/launch-prep"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <LaunchPrepStage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/consistency-audit"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <ConsistencyAuditStage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/scenario-probe"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <ScenarioProbePage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/export"
+            element={
+              <ProtectedRoute>
+                <AppShell>
+                  <KitExportStage />
+                </AppShell>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch-All */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
-      </AppShell>
-    </BrowserRouter>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
