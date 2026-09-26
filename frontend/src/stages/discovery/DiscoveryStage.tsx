@@ -56,7 +56,7 @@ export function DiscoveryStage() {
   const approved = store.ctx.approved_decisions['discovery'];
   const findings = store.ctx.critic_findings.filter((f) => f.stage === 'discovery');
 
-  const content = (approved?.content ?? draft?.content) as DiscoveryContent | undefined;
+  const content = (approved?.content ?? draft?.content) as unknown as DiscoveryContent | undefined;
 
   async function handleGenerate() {
     store.setLoading('discovery', true);

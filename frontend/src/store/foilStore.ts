@@ -16,9 +16,9 @@ import type {
   ConsistencyFinding,
   RevisionLogEntry,
   IdeaInput,
-} from '../../shared/types';
-import { affectedFields } from '../../shared/dependency-map';
-import { transition } from '../../shared/state-machine';
+} from '../../../shared/types';
+import { affectedFields } from '../../../shared/dependency-map';
+import { transition } from '../../../shared/state-machine';
 
 // ─── Initial state ──────────────────────────────────────────────────────────
 
@@ -337,4 +337,4 @@ export const useFOILStore = create<FOILStore>((set, get) => {
 });
 
 // Type alias to satisfy architecture.md reference
-type ApprovedDecision = import('../../shared/types').ApprovedDecision;
+type ApprovedDecision = import('../../../shared/types').ApprovedDecision;

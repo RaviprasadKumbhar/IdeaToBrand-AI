@@ -1,53 +1,94 @@
-/**
- * PositioningStage — Stage 2: Positioning (design.md § 15).
- * Side-by-side comparison of 2 divergent directions.
- */
+import { useState } from 'react';
 import { useFOILStore } from '../../store/foilStore';
 import { StageScreen } from '../../components/StageScreen';
 import { generateStage } from '../../lib/api-client';
+import { EditableField } from '../../components/EditableField';
 import type { CriticFinding } from '../../../../shared/types';
 import { v4 as uuid } from 'uuid';
 
-interface Direction {
-  title: string; category: string; target_audience: string; core_problem: string;
-  differentiator: string; value_proposition: string; competitive_angle: string;
-  strategic_rationale: string; potential_weakness: string;
+export interface PositioningDirection {
+  title: string;
+  category: string;
+  target_audience: string;
+  core_problem: string;
+  differentiator: string;
+  value_proposition: string;
+  competitive_angle: string;
+  strategic_rationale: string;
+  potential_weakness: string;
 }
-interface PositioningContent { directions: Direction[]; }
 
-function DirectionCard({ dir, index, onApprove }: { dir: Direction; index: number; onApprove: () => void }) {
+export interface PositioningContent {
+  directions: PositioningDirection[];
+}
+
+const DIRECTION_FIELDS: { key: keyof PositioningDirection; label: string }[] = [
+  { key: 'category',          label: 'Category' },
+  { key: 'target_audience',   label: 'Target Audience' },
+  { key: 'core_problem',      label: 'Core Problem' },
+  { key: 'differentiator',    label: 'Differentiator' },
+  { key: 'value_proposition', label: 'Value Proposition' },
+  { key: 'competitive_angle', label: 'Competitive Angle' },
+  { key: 'strategic_rationale', label: 'Strategic Rationale' },
+  { key: 'potential_weakness', label: 'Potential Weakness' },
+];
+
+interface DirectionCardProps {
+  dir: PositioningDirection;
+  index: number;
+  isApproved: boolean;
+  isSelected: boolean;
+  onApprove: () => void;
+  onEdit: (field: keyof PositioningDirection, value: string) => void;
+}
+
+function DirectionCard({ dir, index, isApproved, isSelected, onApprove, onEdit }: DirectionCardProps) {
+  const label = `Direction ${String.fromCharCode(65 + index)}`;
   return (
-    <div className="card p-5 flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="section-label mb-1">Direction {String.fromCharCode(65 + index)}</p>
-          <h3 className="text-h3 font-bold text-ink-950">{dir.title}</h3>
-          <span className="badge-draft mt-1">{dir.category}</span>
-        </div>
+    <article
+      className={[
+        'card flex flex-col gap-0 overflow-hidden transition-all duration-200',
+        isSelected ? 'ring-2 ring-accent-600 border-accent-600' : '',
+        isApproved && !isSelected ? 'opacity-50' : '',
+      ].join(' ')}
+      aria-label={`${label}: ${dir.title}`}
+    >
+      <div className={`p-4 ${isSelected ? 'bg-accent-100' : 'bg-surface-100'} border-b border-border`}>
+        <p className="section-label mb-1">{label}</p>
+        <h3 className="text-h3 font-bold text-ink-950">{dir.title}</h3>
+        {isSelected && (
+          <span className="badge-approved mt-2 inline-block">Selected</span>
+        )}
       </div>
-      {[
-        ['Target Audience', dir.target_audience],
-        ['Core Problem', dir.core_problem],
-        ['Differentiator', dir.differentiator],
-        ['Value Proposition', dir.value_proposition],
-        ['Competitive Angle', dir.competitive_angle],
-        ['Strategic Rationale', dir.strategic_rationale],
-        ['Potential Weakness', dir.potential_weakness],
-      ].map(([label, value]) => (
-        <div key={label} className="border-t border-border pt-3">
-          <p className="section-label mb-1">{label}</p>
-          <p className="text-sm text-ink-950">{value}</p>
-        </div>
-      ))}
-      <button
-        id={`btn-approve-direction-${index}`}
-        onClick={onApprove}
-        className="btn-primary mt-2 w-full justify-center"
-        aria-label={`Select and approve Direction ${String.fromCharCode(65 + index)}: ${dir.title}`}
-      >
-        ✓ Approve Direction {String.fromCharCode(65 + index)}
-      </button>
-    </div>
+
+      <div className="p-4 flex flex-col gap-4 flex-1">
+        {DIRECTION_FIELDS.map(({ key, label: fieldLabel }) => (
+          <EditableField
+            key={key}
+            label={fieldLabel}
+            value={dir[key]}
+            disabled={isApproved && !isSelected}
+            onSave={(v) => onEdit(key, v)}
+          />
+        ))}
+      </div>
+
+      <div className="p-4 border-t border-border">
+        <button
+          id={`btn-approve-direction-${index}`}
+          onClick={onApprove}
+          disabled={isApproved && isSelected}
+          className={[
+            'w-full justify-center',
+            isSelected ? 'btn-secondary' : 'btn-primary',
+          ].join(' ')}
+          aria-label={`Approve Direction ${String.fromCharCode(65 + index)}: ${dir.title}`}
+          aria-pressed={isSelected}
+        >
+          {isSelected ? '✓ Approved' : `Select & Approve Direction ${String.fromCharCode(65 + index)}`}
+        </button>
+      </div>
+    </article>
   );
 }
 
@@ -55,47 +96,99 @@ export function PositioningStage() {
   const store = useFOILStore();
   const ui = store.uiStates['positioning'];
   const draft = store.ctx.stage_drafts['positioning'];
+  const approved = store.ctx.approved_decisions['positioning'];
   const findings = store.ctx.critic_findings.filter(f => f.stage === 'positioning');
-  const content = draft?.content as PositioningContent | undefined;
+
+  const rawContent = (approved?.content ?? draft?.content) as unknown as PositioningContent | undefined;
+  const [localDirections, setLocalDirections] = useState<PositioningDirection[] | null>(null);
+
+  const directions = localDirections ?? rawContent?.directions ?? [];
+  const selectedTitle = (approved?.content as unknown as PositioningContent | undefined)?.directions?.[0]?.title;
+  const selectedIndex = directions.findIndex(d => d.title === selectedTitle);
 
   async function handleGenerate() {
+    setLocalDirections(null);
     store.setLoading('positioning', true);
     store.setError('positioning', null);
     try {
       const result = await generateStage('positioning', { approved_decisions: store.ctx.approved_decisions });
       store.setDraft('positioning', result.content);
       store.transitionStage('positioning', 'generate');
-      const findings: CriticFinding[] = result.findings.map(f => ({ ...f, id: f.id ?? uuid(), stage: 'positioning' as const }));
-      store.addCriticFindings(findings);
-      store.transitionStage('positioning', findings.length > 0 ? 'critic_flag' : 'critic_pass');
+      const newFindings: CriticFinding[] = result.findings.map(f => ({
+        ...f, id: f.id ?? uuid(), stage: 'positioning' as const,
+      }));
+      store.addCriticFindings(newFindings);
+      store.transitionStage('positioning', newFindings.length > 0 ? 'critic_flag' : 'critic_pass');
     } catch (err: unknown) {
-      store.setError('positioning', { stage: 'positioning', error_type: 'provider_unavailable', message: err instanceof Error ? err.message : 'Failed', retryable: true });
+      store.setError('positioning', {
+        stage: 'positioning',
+        error_type: 'provider_unavailable',
+        message: err instanceof Error ? err.message : 'Generation failed.',
+        retryable: true,
+      });
     } finally {
       store.setLoading('positioning', false);
     }
   }
 
   function handleApproveDirection(index: number) {
-    if (!content?.directions[index]) return;
-    store.writeApprovedDecision('positioning', { selected: content.directions[index], all: content.directions }, 'user_edit', uuid());
+    const dir = directions[index];
+    if (!dir) return;
+    const causeId = uuid();
+    store.writeApprovedDecision(
+      'positioning',
+      { directions: [dir], all_directions: directions },
+      'user_edit',
+      causeId
+    );
   }
+
+  function handleEditField(dirIndex: number, field: keyof PositioningDirection, value: string) {
+    const updated = directions.map((d, i) =>
+      i === dirIndex ? { ...d, [field]: value } : d
+    );
+    setLocalDirections(updated);
+    if (draft?.content) {
+      store.setDraft('positioning', { ...draft.content, directions: updated });
+    }
+  }
+
+  const approvalState = ui.approval_state;
+  const isApproved = approvalState === 'approved';
 
   return (
     <StageScreen
-      stage="positioning" stageNumber={2} title="Positioning"
-      description="Choose the strategic direction that best represents the brand. Both directions are shown for comparison."
-      approvalState={ui.approval_state} isLoading={ui.is_loading} error={ui.error} findings={findings}
-      onApprove={() => content?.directions[0] && handleApproveDirection(0)}
+      stage="positioning"
+      stageNumber={2}
+      title="Positioning"
+      description="Compare strategic directions and approve the one that best represents the brand. Both directions show their full strategic reasoning."
+      approvalState={approvalState}
+      isLoading={ui.is_loading}
+      error={ui.error}
+      findings={findings}
+      onApprove={() => directions[0] && handleApproveDirection(0)}
       onReject={() => store.rejectStage('positioning')}
       onRegenerate={handleGenerate}
       onFindingAction={(id, action) => store.actOnCriticFinding(id, action)}
+      onEdit={() => store.transitionStage('positioning', 'user_edit')}
+      needsReviewCause="Discovery"
     >
-      {content?.directions && (
-        <div className="grid md:grid-cols-2 gap-4">
-          {content.directions.map((dir, i) => (
-            <DirectionCard key={i} dir={dir} index={i} onApprove={() => handleApproveDirection(i)} />
+      {directions.length > 0 ? (
+        <div className="grid md:grid-cols-2 gap-5" role="list" aria-label="Positioning directions">
+          {directions.map((dir, i) => (
+            <DirectionCard
+              key={`${dir.title}-${i}`}
+              dir={dir}
+              index={i}
+              isApproved={isApproved}
+              isSelected={isApproved && i === selectedIndex}
+              onApprove={() => handleApproveDirection(i)}
+              onEdit={(field, val) => handleEditField(i, field, val)}
+            />
           ))}
         </div>
+      ) : (
+        <p className="text-sm text-ink-500 text-center py-4">No directions loaded yet.</p>
       )}
     </StageScreen>
   );

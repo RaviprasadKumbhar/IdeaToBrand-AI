@@ -4,10 +4,10 @@
  * Each stage passes its own content renderer.
  */
 import { type ReactNode } from 'react';
-import { useFOILStore } from '../../store/foilStore';
-import { StageScreen } from '../../components/StageScreen';
-import { generateStage } from '../../lib/api-client';
-import type { CriticFinding, StageName } from '../../../../shared/types';
+import { useFOILStore } from '../store/foilStore';
+import { StageScreen } from './StageScreen';
+import { generateStage } from '../lib/api-client';
+import type { CriticFinding, StageName } from '../../../shared/types';
 import { v4 as uuid } from 'uuid';
 
 interface GenericStageProps {

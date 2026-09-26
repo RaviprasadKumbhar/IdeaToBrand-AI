@@ -2,7 +2,7 @@
  * Approval state machine — pure function (architecture.md § 15).
  * Unit-tested exhaustively in __tests__/stateMachine.test.ts.
  */
-import type { ApprovalState, ApprovalEvent } from '../types';
+import type { ApprovalState, ApprovalEvent } from './types';
 
 const TRANSITIONS: Record<ApprovalState, Partial<Record<ApprovalEvent, ApprovalState>>> = {
   draft: {

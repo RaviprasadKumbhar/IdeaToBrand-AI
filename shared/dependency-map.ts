@@ -3,7 +3,7 @@
  * Tells the system which downstream stages need `needs_review`
  * when a given upstream stage changes.
  */
-import type { StageName } from '../types';
+import type { StageName } from './types';
 
 export const DEPENDENCY_MAP: Record<StageName, StageName[]> = {
   discovery: ['positioning', 'naming_personality', 'visual_brief', 'voice_messaging', 'launch_prep'],
