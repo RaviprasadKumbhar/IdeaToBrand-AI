@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { validateEnvironment } from "@foil/shared";
 import { exportRouter } from "./routes/export.js";
+import { stagesRouter } from "./routes/stages.js";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.get("/api/health", (_req, res) => {
 
 // Mount routes
 app.use("/api", exportRouter);
+app.use("/api", stagesRouter);
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
