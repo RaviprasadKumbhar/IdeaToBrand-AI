@@ -67,7 +67,7 @@ body {
     @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider select-none bg-surface-100 text-ink-700 border border-border;
   }
   .badge-critic {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider select-none bg-accent-100 text-accent-600 border border-accent-600/20;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider select-none bg-accent-100 text-accent-600 border border-indigo-200;
   }
   .badge-needs-review {
     @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider select-none bg-amber-50 text-amber-700 border border-amber-200;
