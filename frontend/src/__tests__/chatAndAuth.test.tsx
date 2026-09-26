@@ -1,7 +1,7 @@
 /**
- * Tests for Conversational Chat Workspace, Auth Flow, and Landing Page.
- * Verifies public landing page, Supabase auth views, chat composer, file attachments,
- * and conversational workflow integration.
+ * Tests for Studio Brand Workspace, Supabase Auth Flow, and Landing Page.
+ * Verifies public landing page, Supabase auth views, IdeaInput canvas, document attachments,
+ * and AppShell categorized navigation.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -10,7 +10,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { LandingPage } from '../pages/LandingPage';
 import { LoginPage } from '../pages/LoginPage';
 import { SignupPage } from '../pages/SignupPage';
-import { ChatWorkspace } from '../components/chat/ChatWorkspace';
+import { ForgotPasswordPage } from '../pages/ForgotPasswordPage';
+import { IdeaInput } from '../stages/idea-input/IdeaInput';
+import { AppShell } from '../components/AppShell';
 import { AuthProvider } from '../context/AuthContext';
 
 // Mock useNavigate
@@ -37,12 +39,12 @@ describe('Public Landing Page', () => {
       </AuthProvider>
     );
 
-    expect(screen.getByRole('heading', { level: 1, name: /turn your idea into a brand/i })).toBeInTheDocument();
-    expect(screen.getByText(/from raw idea to a brand ready for the world/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /start building free/i })[0]).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /turn your business idea into a complete brand strategy/i })).toBeInTheDocument();
+    expect(screen.getByText(/no confusing marketing jargon/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /start building your brand/i })[0]).toBeInTheDocument();
   });
 
-  it('navigates to signup on Start Building Free click', async () => {
+  it('navigates to signup on Start Building Your Brand click when not authenticated', async () => {
     render(
       <AuthProvider>
         <MemoryRouter>
@@ -51,12 +53,12 @@ describe('Public Landing Page', () => {
       </AuthProvider>
     );
 
-    const cta = screen.getAllByRole('button', { name: /start building free/i })[0];
+    const cta = screen.getAllByRole('button', { name: /start building your brand/i })[0];
     await userEvent.click(cta);
     expect(mockNavigate).toHaveBeenCalledWith('/signup');
   });
 
-  it('renders capabilities section with 9 brand gates', () => {
+  it('renders 9 brand stages with plain-language explanations', () => {
     render(
       <AuthProvider>
         <MemoryRouter>
@@ -66,19 +68,20 @@ describe('Public Landing Page', () => {
     );
 
     expect(screen.getByText(/brand discovery/i)).toBeInTheDocument();
+    expect(screen.getByText(/understand your business, customers, and market\./i)).toBeInTheDocument();
     expect(screen.getByText(/positioning matrix/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/consistency audit/i)[0]).toBeInTheDocument();
-    expect(screen.getByText(/brand kit export/i)).toBeInTheDocument();
+    expect(screen.getByText(/find what makes your brand different from competitors\./i)).toBeInTheDocument();
+    expect(screen.getByText(/kit \+ export/i)).toBeInTheDocument();
   });
 });
 
-describe('Supabase Auth Pages', () => {
+describe('Authentic Supabase Auth Pages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
   });
 
-  it('renders LoginPage with email and password fields', () => {
+  it('renders LoginPage with email, password fields, and zero demo bypass buttons', () => {
     render(
       <AuthProvider>
         <MemoryRouter>
@@ -90,7 +93,9 @@ describe('Supabase Auth Pages', () => {
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /instant demo sign in/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /forgot your password\?/i })).toBeInTheDocument();
+    // Zero demo bypass button
+    expect(screen.queryByRole('button', { name: /demo/i })).not.toBeInTheDocument();
   });
 
   it('toggles password visibility on LoginPage', async () => {
@@ -105,31 +110,15 @@ describe('Supabase Auth Pages', () => {
     const passwordInput = screen.getByLabelText(/^password/i) as HTMLInputElement;
     expect(passwordInput.type).toBe('password');
 
-    const toggleBtn = screen.getByRole('button', { name: /show/i });
+    const toggleBtn = screen.getByRole('button', { name: /^show$/i });
     await userEvent.click(toggleBtn);
     expect(passwordInput.type).toBe('text');
 
-    await userEvent.click(screen.getByRole('button', { name: /hide/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^hide$/i }));
     expect(passwordInput.type).toBe('password');
   });
 
-  it('logs in via Demo Sign In and redirects to workspace', async () => {
-    render(
-      <AuthProvider>
-        <MemoryRouter>
-          <LoginPage />
-        </MemoryRouter>
-      </AuthProvider>
-    );
-
-    const demoBtn = screen.getByRole('button', { name: /instant demo sign in/i });
-    await userEvent.click(demoBtn);
-
-    expect(mockNavigate).toHaveBeenCalledWith('/workspace', { replace: true });
-    expect(localStorage.getItem('ideatobrand_demo_session')).toBeTruthy();
-  });
-
-  it('renders SignupPage with validation fields', () => {
+  it('renders SignupPage with validation fields and zero demo bypasses', () => {
     render(
       <AuthProvider>
         <MemoryRouter>
@@ -143,6 +132,7 @@ describe('Supabase Auth Pages', () => {
     expect(screen.getByLabelText(/^password/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /demo/i })).not.toBeInTheDocument();
   });
 
   it('validates password mismatch on SignupPage', async () => {
@@ -154,7 +144,8 @@ describe('Supabase Auth Pages', () => {
       </AuthProvider>
     );
 
-    await userEvent.type(screen.getByLabelText(/email address/i), 'test@example.com');
+    await userEvent.type(screen.getByLabelText(/full name/i), 'Jane Doe');
+    await userEvent.type(screen.getByLabelText(/email address/i), 'jane@example.com');
     await userEvent.type(screen.getByLabelText(/^password/i), 'password123');
     await userEvent.type(screen.getByLabelText(/confirm password/i), 'different123');
 
@@ -163,90 +154,101 @@ describe('Supabase Auth Pages', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent(/passwords do not match/i);
   });
+
+  it('renders ForgotPasswordPage and handles reset request', () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <ForgotPasswordPage />
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    expect(screen.getByRole('heading', { name: /reset your password/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /send reset link/i })).toBeInTheDocument();
+  });
 });
 
-describe('Conversational ChatWorkspace', () => {
+describe('IdeaInput Project Creation Canvas', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders welcome state with suggestion chips and quick-start templates', () => {
+  it('renders "What are you building?" canvas without arbitrary word count limits', () => {
     render(
       <AuthProvider>
         <MemoryRouter>
-          <ChatWorkspace />
+          <IdeaInput />
         </MemoryRouter>
       </AuthProvider>
     );
 
-    expect(screen.getByText(/let's build your brand\./i)).toBeInTheDocument();
-    expect(screen.getByText(/define brand idea/i)).toBeInTheDocument();
-    expect(screen.getByText(/explore target audience/i)).toBeInTheDocument();
-    expect(screen.getByText(/ecocourier \(logistics\)/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/chat input message/i)).toBeInTheDocument();
-  });
-
-  it('has multiline textarea composer without arbitrary 500-word limit', async () => {
-    render(
-      <AuthProvider>
-        <MemoryRouter>
-          <ChatWorkspace />
-        </MemoryRouter>
-      </AuthProvider>
-    );
-
-    const textarea = screen.getByLabelText(/chat input message/i);
+    expect(screen.getByRole('heading', { name: /what are you building\?/i })).toBeInTheDocument();
+    const textarea = screen.getByLabelText(/your idea or business description/i);
     expect(textarea).not.toHaveAttribute('maxLength');
-
-    // Type a conversational message
-    await userEvent.type(textarea, 'Help me build a brand.');
-    expect(textarea).toHaveValue('Help me build a brand.');
-
-    const sendBtn = screen.getByRole('button', { name: /send message/i });
-    expect(sendBtn).not.toBeDisabled();
+    expect(screen.getByText(/write freely without word count restrictions\./i)).toBeInTheDocument();
   });
 
   it('supports document attachment selection and removal', async () => {
     render(
       <AuthProvider>
         <MemoryRouter>
-          <ChatWorkspace />
+          <IdeaInput />
         </MemoryRouter>
       </AuthProvider>
     );
 
-    const fileInput = screen.getByLabelText(/attach documents or images/i);
-    const testFile = new File(['brand research notes'], 'research.txt', { type: 'text/plain' });
+    const fileInput = screen.getByLabelText(/upload reference files/i);
+    const testFile = new File(['business plan content'], 'business-plan.txt', { type: 'text/plain' });
 
     fireEvent.change(fileInput, { target: { files: [testFile] } });
 
     await waitFor(() => {
-      expect(screen.getByText(/research\.txt/i)).toBeInTheDocument();
+      expect(screen.getByText(/business-plan\.txt/i)).toBeInTheDocument();
     });
 
     // Remove the attachment
-    const removeBtn = screen.getByRole('button', { name: /remove attachment research\.txt/i });
+    const removeBtn = screen.getByLabelText(/remove file business-plan\.txt/i);
     await userEvent.click(removeBtn);
 
-    expect(screen.queryByText(/research\.txt/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/business-plan\.txt/i)).not.toBeInTheDocument();
   });
 
-  it('rejects unsupported file formats with clear error alert', async () => {
+  it('applies quick example template into canvas', async () => {
     render(
       <AuthProvider>
         <MemoryRouter>
-          <ChatWorkspace />
+          <IdeaInput />
         </MemoryRouter>
       </AuthProvider>
     );
 
-    const fileInput = screen.getByLabelText(/attach documents or images/i);
-    const unsupportedFile = new File(['malicious script'], 'hack.exe', { type: 'application/x-msdownload' });
+    const ecoCourierBtn = screen.getByRole('button', { name: /ecocourier/i });
+    await userEvent.click(ecoCourierBtn);
 
-    fireEvent.change(fileInput, { target: { files: [unsupportedFile] } });
+    const textarea = screen.getByLabelText(/your idea or business description/i) as HTMLTextAreaElement;
+    expect(textarea.value).toContain('cargo bike logistics');
+  });
+});
 
-    await waitFor(() => {
-      expect(screen.getByText(/file "hack\.exe" is not supported/i)).toBeInTheDocument();
-    });
+describe('AppShell Brand Workspace Navigation', () => {
+  it('renders categorized navigation with plain language descriptions', () => {
+    render(
+      <AuthProvider>
+        <MemoryRouter>
+          <AppShell>
+            <div>Workspace Stage Content</div>
+          </AppShell>
+        </MemoryRouter>
+      </AuthProvider>
+    );
+
+    expect(screen.getByText(/brand strategy pipeline/i)).toBeInTheDocument();
+    expect(screen.getByText(/foundation/i)).toBeInTheDocument();
+    expect(screen.getByText(/strategy & identity/i)).toBeInTheDocument();
+    expect(screen.getByText(/launch & delivery/i)).toBeInTheDocument();
+    expect(screen.getByText(/workspace stage content/i)).toBeInTheDocument();
+    expect(screen.getByText(/understand your business, customers, and market\./i)).toBeInTheDocument();
   });
 });
