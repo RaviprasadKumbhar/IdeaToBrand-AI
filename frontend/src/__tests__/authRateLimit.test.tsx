@@ -13,7 +13,7 @@
  * 10. Existing local-auth fallback continues to work.
  * 11. Existing authentication tests continue to pass.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
