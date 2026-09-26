@@ -202,5 +202,24 @@ describe('T-015: Discovery Stage Service', () => {
       );
       expect(approvedCtx.revision_log[0].cause).toBe('user_edit');
     });
+
+    it('generates contextually relevant discovery draft for custom user idea without EdTech override', async () => {
+      const service = new DiscoveryStageService();
+      const defaultMockProvider = new MockAIProvider();
+      const customIdea = 'I want to build a healthy Indian snack brand for college students and young professionals.';
+
+      const result = await service.generateDiscoveryDraft(
+        {
+          idea_text: customIdea,
+          business_description: customIdea,
+        },
+        defaultMockProvider
+      );
+
+      expect(result.content.core_problem).toMatch(/snack|indian|nutrition/i);
+      expect(result.content.target_audience).toMatch(/students|young professionals|snack/i);
+      expect(result.content.core_problem).not.toContain('class projects');
+      expect(result.content.core_problem).not.toContain('Academic Matchmaker');
+    });
   });
 });
