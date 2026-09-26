@@ -743,9 +743,9 @@ Each participant completes their own required submission where applicable.
 - [ ] `approved_decisions` cannot be silently overwritten
 - [ ] Explicit user approval is required
 - [ ] Revision history works
-- [ ] Dependency-aware review works
-- [ ] Scenario Probe does not silently overwrite the original
-- [ ] Scenario Probe supports accept/keep/edit
+- [x] Dependency-aware review works
+- [x] Scenario Probe does not silently overwrite the original
+- [x] Scenario Probe supports accept/keep/edit
 - [ ] AI output is schema validated
 - [ ] Retry limits are enforced
 - [ ] Failed AI output is visible
@@ -876,8 +876,8 @@ Stop and resolve the issue if:
 - [ ] AI workflow verified
 - [ ] Strategist verified
 - [ ] Critic verified
-- [ ] Dependency behavior verified
-- [ ] Scenario Probe verified
+- [x] Dependency behavior verified
+- [x] Scenario Probe verified
 - [ ] Consistency Audit verified
 
 ### Member 2
