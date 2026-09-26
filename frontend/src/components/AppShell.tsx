@@ -19,7 +19,7 @@ interface StageRouteItem {
 }
 
 const STAGE_ROUTES: StageRouteItem[] = [
-  { stage: 'idea-input',          label: 'Idea Input',           route: '/',                   step: 0, category: 'START' },
+  { stage: 'idea-input',          label: 'Idea Input',           route: '/idea-input',          step: 0, category: 'START' },
   { stage: 'discovery',           label: 'Discovery',            route: '/discovery',           step: 1, category: 'STRATEGY' },
   { stage: 'positioning',         label: 'Positioning',          route: '/positioning',         step: 2, category: 'STRATEGY' },
   { stage: 'naming_personality',  label: 'Naming + Personality', route: '/naming-personality',  step: 3, category: 'IDENTITY' },
@@ -38,7 +38,7 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const {
     ctx,
     uiStates,
@@ -54,6 +54,17 @@ export function AppShell({ children }: AppShellProps) {
       setActiveUser(user.id);
     }
   }, [user?.id, setActiveUser]);
+
+  const userDisplayName =
+    user?.user_metadata?.full_name ||
+    user?.email?.split('@')[0] ||
+    'Founder';
+  const userInitials = userDisplayName
+    .split(' ')
+    .map((w: string) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'FO';
 
   function getStageState(stage: StageName | 'idea-input'): {
     state: 'approved' | 'needs_review' | 'failed' | 'rejected' | 'in_progress' | 'draft' | 'complete';
@@ -122,11 +133,15 @@ export function AppShell({ children }: AppShellProps) {
 
           <span className="hidden sm:block text-border" aria-hidden="true">|</span>
 
-          {/* Project Name / Session Status Indicator */}
+          {/* Current Idea / Session Status Indicator */}
           <div className="hidden sm:flex items-center gap-2 min-w-0">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-surface-100 border border-border text-ink-700 font-medium truncate max-w-[200px] lg:max-w-[260px]">
+            <span className="text-[11px] font-medium text-ink-400 flex-shrink-0">Current idea:</span>
+            <span
+              className="text-xs px-2.5 py-1 rounded-full bg-surface-100 border border-border text-ink-800 font-semibold truncate max-w-[200px] lg:max-w-[280px]"
+              title={String(ctx.user_facts['business_description'] || 'New Brand Project')}
+            >
               {ctx.user_facts['business_description']
-                ? String(ctx.user_facts['business_description']).slice(0, 32) + '…'
+                ? String(ctx.user_facts['business_description'])
                 : 'New Brand Project'}
             </span>
             {cloudSaveStatus === 'saving' && (
@@ -210,7 +225,7 @@ export function AppShell({ children }: AppShellProps) {
             onClick={() => {
               if (window.confirm('Start a new project? This will reset all current session data and return to Idea Input.')) {
                 resetProject();
-                navigate('/');
+                navigate('/idea-input');
                 setMobileMenuOpen(false);
               }
             }}
@@ -219,6 +234,47 @@ export function AppShell({ children }: AppShellProps) {
           >
             Reset
           </button>
+
+          {/* Auth Identity / Sign Out */}
+          {user ? (
+            <div className="flex items-center gap-2 pl-2 border-l border-border">
+              <span
+                className="w-7 h-7 rounded-full bg-accent-600 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 shadow-2xs"
+                title={user.email || userDisplayName}
+                aria-label={`User: ${userDisplayName}`}
+              >
+                {userInitials}
+              </span>
+              <span className="text-xs font-medium text-ink-700 hidden xl:inline max-w-[100px] truncate">
+                {userDisplayName}
+              </span>
+              <button
+                onClick={async () => {
+                  await signOut();
+                  navigate('/');
+                }}
+                className="text-xs text-ink-500 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-red-400"
+                aria-label="Sign out"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 pl-2 border-l border-border">
+              <button
+                onClick={() => navigate('/login')}
+                className="text-xs font-medium text-ink-700 hover:text-ink-950 px-2 py-1 rounded hover:bg-surface-100 transition-colors"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => navigate('/signup')}
+                className="btn-primary text-xs px-2.5 py-1"
+              >
+                Create account
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
