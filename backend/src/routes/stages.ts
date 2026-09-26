@@ -164,7 +164,7 @@ stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response)
         });
     }
   } catch (err: any) {
-    const errorType = err.error_type || "provider_unavailable";
+    const errorType = err.error_type || err.errorType || "provider_unavailable";
     const status = errorType === "schema_validation_failed" ? 422 : 500;
     return res.status(status).json({
       stage,
@@ -189,7 +189,7 @@ stagesRouter.post("/audit/holistic", async (req: Request, res: Response) => {
     return res.status(200).json({ findings });
   } catch (err: any) {
     return res.status(500).json({
-      error_type: err.error_type || "audit_failed",
+      error_type: err.error_type || err.errorType || "audit_failed",
       message: err.message || "Holistic consistency audit execution failed",
       retryable: err.retryable ?? false,
     });

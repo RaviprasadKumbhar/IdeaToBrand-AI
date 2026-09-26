@@ -17,7 +17,7 @@ export const app = express();
 const PORT = envResult.config?.PORT || parseInt(process.env.PORT || "5000", 10);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 
 // Health check endpoint
 app.get("/api/health", (_req, res) => {

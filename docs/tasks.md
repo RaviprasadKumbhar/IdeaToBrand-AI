@@ -592,7 +592,7 @@ Complete the entire workflow from a new idea to export.
 # 21. Phase 17 — Security and Reliability
 
 ## T-042 — Security Review
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Check:
 - secrets
@@ -604,7 +604,7 @@ Check:
 - frontend secret exposure
 
 ## T-043 — Failure-State Review
-**Owner:** Member 1 + Member 3 | **Priority:** P0
+**Owner:** Member 1 + Member 3 | **Priority:** P0 | **Status:** DONE
 
 Test:
 - AI timeout
@@ -621,7 +621,7 @@ Test:
 # 22. Phase 18 — Performance and Polish
 
 ## T-044 — Performance Review
-**Owner:** Member 3 | **Priority:** P1
+**Owner:** Member 3 | **Priority:** P1 | **Status:** DONE
 
 Check unnecessary AI calls, duplicate requests, excessive regeneration, slow loading, large responses, and unnecessary persistence calls.
 
