@@ -1,21 +1,25 @@
 /**
  * LoginPage — Supabase Email and Password Authentication.
- * Clean, accessible authentication view without demo bypasses.
+ * Handles rate limits, unverified emails, and invalid credentials gracefully.
+ * Never displays raw provider errors, internal error codes, or technical tokens.
  */
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isRateLimitError, RATE_LIMIT_CONTENT } from '../lib/authErrors';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, isConfigured } = useAuth();
+  const { signIn } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/workspace';
 
@@ -23,17 +27,29 @@ export function LoginPage() {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
       setError('Please enter both email and password.');
+      setIsRateLimited(false);
       return;
     }
 
     setLoading(true);
     setError(null);
+    setIsRateLimited(false);
+    setUnverifiedEmail(null);
 
-    const { error: authError } = await signIn(email.trim(), password);
+    const cleanEmail = email.trim();
+    const result = await signIn(cleanEmail, password);
     setLoading(false);
 
-    if (authError) {
-      setError(authError.message || 'Failed to sign in. Please verify your credentials.');
+    if (result.requiresVerification) {
+      setUnverifiedEmail(result.email || cleanEmail);
+      setError(result.error?.message || 'Please verify your email before signing in. Check your inbox for the verification email.');
+    } else if (result.error) {
+      if (isRateLimitError(result.error)) {
+        setIsRateLimited(true);
+        setError(RATE_LIMIT_CONTENT.description);
+      } else {
+        setError(result.error.message || 'Failed to sign in. Please verify your credentials.');
+      }
     } else {
       navigate(from, { replace: true });
     }
@@ -65,19 +81,43 @@ export function LoginPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="card bg-white p-7 border-border shadow-card">
-          {!isConfigured && (
-            <div className="mb-4 p-3 rounded-lg bg-indigo-50 border border-indigo-200 text-xs text-indigo-900 flex items-start gap-2">
-              <span className="font-bold text-accent-600">⚡ Dev Mode:</span>
-              <span>Local authentication active. You can enter any email & password (or your created account) to sign in immediately.</span>
+          {isRateLimited ? (
+            <div
+              role="alert"
+              className="mb-5 p-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 space-y-1.5 text-left"
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center font-bold text-xs select-none">
+                  !
+                </span>
+                <h3 className="font-bold text-sm text-amber-950">{RATE_LIMIT_CONTENT.title}</h3>
+              </div>
+              <p className="text-xs text-amber-900 leading-relaxed">
+                {RATE_LIMIT_CONTENT.description}
+              </p>
+              <p className="text-[11px] text-amber-800 pt-0.5">
+                {RATE_LIMIT_CONTENT.subtext}
+              </p>
             </div>
-          )}
-
-          {error && (
-            <div role="alert" className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
-              <span className="font-bold text-red-500">✕</span>
-              <span>{error}</span>
+          ) : error ? (
+            <div role="alert" className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex flex-col gap-2">
+              <div className="flex items-start gap-2">
+                <span className="font-bold text-red-500 select-none">✕</span>
+                <span>{error}</span>
+              </div>
+              {unverifiedEmail && (
+                <div className="pt-1 border-t border-red-200/60 mt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/verify-email', { state: { email: unverifiedEmail } })}
+                    className="text-xs font-bold text-accent-700 hover:underline inline-flex items-center gap-1"
+                  >
+                    Open Email Verification Page →
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          ) : null}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

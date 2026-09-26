@@ -21,6 +21,11 @@ import { affectedFields } from '../../../shared/dependency-map';
 import { transition } from '../../../shared/src/store/approvalStateMachine';
 import type { ApprovalEvent } from '../../../shared/src/types/index';
 import type { WorkspaceProjectData } from '../lib/supabase-workspace';
+import {
+  saveProjectToDb,
+  fetchUserProjects,
+  type DbProjectRecord,
+} from '../lib/supabase';
 
 // ─── Initial state ──────────────────────────────────────────────────────────
 
@@ -130,6 +135,17 @@ export interface FOILStore {
   addScenarioOverride: (override: import('../../../shared/types').ScenarioOverride) => void;
   resolveScenarioOverride: (overrideId: string, decision: NonNullable<import('../../../shared/types').ScenarioOverride['decision']>) => void;
 
+  // Supabase Cloud Persistence
+  cloudSaveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  cloudSaveError: string | null;
+  lastSavedAt: string | null;
+  activeUserId: string | null;
+
+  setActiveUser: (userId: string | null) => void;
+  loadProjectFromCloud: (userId: string) => Promise<boolean>;
+  saveToCloud: (overrideUserId?: string) => Promise<boolean>;
+  retrySave: () => Promise<boolean>;
+
   // Session reset (new project)
   resetProject: () => void;
 
@@ -137,9 +153,22 @@ export interface FOILStore {
   loadProjectIntoStore: (project: WorkspaceProjectData) => void;
 }
 
+// ─── Autosave helpers ─────────────────────────────────────────────────────────
+
+let autosaveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function triggerAutosave(get: () => FOILStore) {
+  if (autosaveTimeout) {
+    clearTimeout(autosaveTimeout);
+  }
+  autosaveTimeout = setTimeout(() => {
+    get().saveToCloud();
+  }, 1000);
+}
+
 // ─── Store implementation ─────────────────────────────────────────────────────
 
-export const useFOILStore = create<FOILStore>((set) => {
+export const useFOILStore = create<FOILStore>((set, get) => {
   const savedCtx = loadFromSession();
 
   return {
@@ -147,6 +176,12 @@ export const useFOILStore = create<FOILStore>((set) => {
     uiStates: createInitialUIStates(),
     ideaInput: null,
     currentStage: 'idea-input',
+
+    // Cloud Persistence Initial State
+    cloudSaveStatus: 'idle',
+    cloudSaveError: null,
+    lastSavedAt: null,
+    activeUserId: null,
 
     setIdeaInput: (input) => {
       set({ ideaInput: input });
@@ -164,6 +199,7 @@ export const useFOILStore = create<FOILStore>((set) => {
         persistToSession(updatedCtx);
         return { ctx: updatedCtx };
       });
+      triggerAutosave(get);
     },
 
     setCurrentStage: (stage) => set({ currentStage: stage }),
@@ -183,6 +219,7 @@ export const useFOILStore = create<FOILStore>((set) => {
         persistToSession(updatedCtx);
         return { ctx: updatedCtx };
       });
+      triggerAutosave(get);
     },
 
     clearDraft: (stage) => {
@@ -193,6 +230,7 @@ export const useFOILStore = create<FOILStore>((set) => {
         persistToSession(updatedCtx);
         return { ctx: updatedCtx };
       });
+      triggerAutosave(get);
     },
 
     setLoading: (stage, loading) => {
@@ -269,6 +307,7 @@ export const useFOILStore = create<FOILStore>((set) => {
           },
         };
       });
+      triggerAutosave(get);
     },
 
     rejectStage: (stage) => {
@@ -278,6 +317,7 @@ export const useFOILStore = create<FOILStore>((set) => {
           [stage]: { ...state.uiStates[stage], approval_state: 'rejected' },
         },
       }));
+      triggerAutosave(get);
     },
 
     transitionStage: (stage, event) => {
@@ -291,6 +331,7 @@ export const useFOILStore = create<FOILStore>((set) => {
           },
         };
       });
+      triggerAutosave(get);
     },
 
     addCriticFindings: (findings) => {
@@ -302,6 +343,7 @@ export const useFOILStore = create<FOILStore>((set) => {
         persistToSession(updatedCtx);
         return { ctx: updatedCtx };
       });
+      triggerAutosave(get);
     },
 
     actOnCriticFinding: (id, action) => {
@@ -315,6 +357,7 @@ export const useFOILStore = create<FOILStore>((set) => {
         persistToSession(updatedCtx);
         return { ctx: updatedCtx };
       });
+      triggerAutosave(get);
     },
 
     setConsistencyFindings: (findings) => {
@@ -323,6 +366,7 @@ export const useFOILStore = create<FOILStore>((set) => {
         persistToSession(updatedCtx);
         return { ctx: updatedCtx };
       });
+      triggerAutosave(get);
     },
 
     actOnConsistencyFinding: (id, action) => {
@@ -336,11 +380,7 @@ export const useFOILStore = create<FOILStore>((set) => {
         persistToSession(updatedCtx);
         return { ctx: updatedCtx };
       });
-    },
-
-    resetProject: () => {
-      sessionStorage.removeItem(SESSION_KEY);
-      set({ ctx: createInitialContext(), uiStates: createInitialUIStates(), ideaInput: null, currentStage: 'idea-input' });
+      triggerAutosave(get);
     },
 
     loadProjectIntoStore: (project) => {
@@ -361,6 +401,7 @@ export const useFOILStore = create<FOILStore>((set) => {
         persistToSession(updatedCtx);
         return { ctx: updatedCtx };
       });
+      triggerAutosave(get);
     },
 
     resolveScenarioOverride: (overrideId, decision) => {
@@ -374,6 +415,141 @@ export const useFOILStore = create<FOILStore>((set) => {
         persistToSession(updatedCtx);
         return { ctx: updatedCtx };
       });
+      triggerAutosave(get);
+    },
+
+    // ─── Cloud Persistence Implementation ──────────────────────────────────────
+
+    setActiveUser: (userId: string | null) => {
+      const prevUserId = get().activeUserId;
+      set({ activeUserId: userId });
+      if (userId && userId !== prevUserId) {
+        get().loadProjectFromCloud(userId);
+      }
+    },
+
+    saveToCloud: async (overrideUserId?: string) => {
+      const state = get();
+      const userId = overrideUserId || state.activeUserId;
+      if (!userId) {
+        return false;
+      }
+
+      set({ cloudSaveStatus: 'saving', cloudSaveError: null });
+
+      const brandName =
+        (state.ctx.approved_decisions.naming_personality?.content as Record<string, unknown> | undefined)?.selected_name as string ||
+        (state.ctx.user_facts.business_description ? String(state.ctx.user_facts.business_description).slice(0, 40) : 'Untitled Brand');
+
+      const brandDesc = state.ctx.user_facts.business_description ? String(state.ctx.user_facts.business_description) : null;
+
+      const record: DbProjectRecord = {
+        id: state.ctx.project_id,
+        user_id: userId,
+        name: brandName,
+        description: brandDesc,
+        current_stage: state.currentStage,
+        context: state.ctx,
+        ui_states: state.uiStates as Record<string, unknown>,
+      };
+
+      const { error } = await saveProjectToDb(record);
+      if (error) {
+        set({ cloudSaveStatus: 'error', cloudSaveError: error.message });
+        return false;
+      } else {
+        set({ cloudSaveStatus: 'saved', lastSavedAt: new Date().toISOString(), cloudSaveError: null });
+        return true;
+      }
+    },
+
+    retrySave: async () => {
+      return get().saveToCloud();
+    },
+
+    loadProjectFromCloud: async (userId: string) => {
+      set({ activeUserId: userId, cloudSaveStatus: 'saving', cloudSaveError: null });
+      const { data, error } = await fetchUserProjects(userId);
+      if (error) {
+        set({ cloudSaveStatus: 'error', cloudSaveError: error.message });
+        return false;
+      }
+
+      if (data && data.length > 0) {
+        const latest = data[0];
+        const loadedCtx: SharedContext = {
+          ...createInitialContext(),
+          ...latest.context,
+          project_id: latest.id || latest.context.project_id,
+        };
+        const loadedUIStates = {
+          ...createInitialUIStates(),
+          ...(latest.ui_states as Record<StageName, StageUIState>),
+        };
+        persistToSession(loadedCtx);
+        set({
+          ctx: loadedCtx,
+          uiStates: loadedUIStates,
+          currentStage: (latest.current_stage as StageName | 'idea-input') || 'idea-input',
+          cloudSaveStatus: 'saved',
+          lastSavedAt: latest.updated_at || new Date().toISOString(),
+          cloudSaveError: null,
+        });
+        return true;
+      } else {
+        // No project found in database yet, initialize and save clean project row
+        const initialCtx = get().ctx;
+        const brandName = initialCtx.user_facts.business_description
+          ? String(initialCtx.user_facts.business_description).slice(0, 40)
+          : 'New Brand Project';
+        const record: DbProjectRecord = {
+          id: initialCtx.project_id,
+          user_id: userId,
+          name: brandName,
+          description: initialCtx.user_facts.business_description ? String(initialCtx.user_facts.business_description) : null,
+          current_stage: get().currentStage,
+          context: initialCtx,
+          ui_states: get().uiStates as Record<string, unknown>,
+        };
+        const { error: saveErr } = await saveProjectToDb(record);
+        if (saveErr) {
+          set({ cloudSaveStatus: 'error', cloudSaveError: saveErr.message });
+        } else {
+          set({ cloudSaveStatus: 'saved', lastSavedAt: new Date().toISOString(), cloudSaveError: null });
+        }
+        return true;
+      }
+    },
+
+    resetProject: () => {
+      sessionStorage.removeItem(SESSION_KEY);
+      const newCtx = createInitialContext();
+      const newUI = createInitialUIStates();
+      set({
+        ctx: newCtx,
+        uiStates: newUI,
+        ideaInput: null,
+        currentStage: 'idea-input',
+        cloudSaveStatus: 'idle',
+        cloudSaveError: null,
+      });
+      const userId = get().activeUserId;
+      if (userId) {
+        const record: DbProjectRecord = {
+          id: newCtx.project_id,
+          user_id: userId,
+          name: 'New Brand Project',
+          description: null,
+          current_stage: 'idea-input',
+          context: newCtx,
+          ui_states: newUI as Record<string, unknown>,
+        };
+        saveProjectToDb(record).then(({ error }) => {
+          if (!error) {
+            set({ cloudSaveStatus: 'saved', lastSavedAt: new Date().toISOString() });
+          }
+        });
+      }
     },
   };
 });
