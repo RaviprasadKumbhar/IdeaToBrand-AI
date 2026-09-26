@@ -47,7 +47,7 @@ Only work on P2 after P0 is stable and P1 critical items are complete.
 # 4. Phase 0 — Project Foundation
 
 ## T-001 — Repository and Branch Setup
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** None
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** None | **Status:** DONE
 
 ### Tasks
 - Verify repository structure.
@@ -62,7 +62,7 @@ Only work on P2 after P0 is stable and P1 critical items are complete.
 - No secrets are committed.
 
 ## T-002 — Environment and Configuration
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-001
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-001 | **Status:** DONE
 
 ### Tasks
 - Configure required environment variables.
@@ -153,7 +153,7 @@ Validate every structured AI response. Implement retry/regeneration limits from 
 # 6. Phase 2 — Persistence and Project State
 
 ## T-008 — Project Persistence
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-003, T-002
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-003, T-002 | **Status:** DONE
 
 Persist:
 - project information
@@ -169,14 +169,14 @@ Persist:
 **Done when:** state survives refresh and approved/draft data remain separated.
 
 ## T-009 — Approval State Management
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-008
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-008 | **Status:** DONE
 
 Implement approve/reject/edit/revise/review-required behavior according to architecture.
 
 **Done when:** only explicit user action changes approval and changes are logged.
 
 ## T-010 — Revision History
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-009
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-009 | **Status:** DONE
 
 Record meaningful approved changes, including changed field, relevant stage/branch, action/source, and timestamp where supported.
 
@@ -477,12 +477,12 @@ Support Accept / Reject / Edit.
 # 18. Phase 14 — Kit Assembly and Export
 
 ## T-033 — Kit Assembly
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** Required P0 stages, T-031
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** Required P0 stages, T-031 | **Status:** DONE
 
 Assemble the brand system from authoritative approved decisions only.
 
 ## T-034 — Export Gating
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-033
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-033 | **Status:** DONE
 
 Export MUST fail when:
 - required stage is not approved;
@@ -491,7 +491,7 @@ Export MUST fail when:
 - export validation fails.
 
 ## T-035 — Markdown Export
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-034
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-034 | **Status:** DONE
 
 Export the complete approved brand system.
 
@@ -519,7 +519,7 @@ Only implement if stable and useful. It must not delay working Markdown export.
 # 19. Phase 15 — End-to-End Integration
 
 ## T-037 — Full Stage Integration
-**Owner:** Member 2 + Member 3 | **Priority:** P0 | **Dependencies:** T-015 through T-035
+**Owner:** Member 2 + Member 3 | **Priority:** P0 | **Dependencies:** T-015 through T-035 | **Status:** DONE
 
 Connect:
 - frontend
@@ -540,7 +540,7 @@ Connect:
 # 20. Phase 16 — Testing and QA
 
 ## T-038 — Unit / Contract Testing
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Test:
 - schemas
@@ -581,7 +581,7 @@ Test:
 - responsive behavior
 
 ## T-041 — Full End-to-End QA
-**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-037, T-038, T-039, T-040
+**Owner:** Member 3 | **Priority:** P0 | **Dependencies:** T-037, T-038, T-039, T-040 | **Status:** DONE
 
 Complete the entire workflow from a new idea to export.
 
@@ -592,7 +592,7 @@ Complete the entire workflow from a new idea to export.
 # 21. Phase 17 — Security and Reliability
 
 ## T-042 — Security Review
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Check:
 - secrets
@@ -604,7 +604,7 @@ Check:
 - frontend secret exposure
 
 ## T-043 — Failure-State Review
-**Owner:** Member 1 + Member 3 | **Priority:** P0
+**Owner:** Member 1 + Member 3 | **Priority:** P0 | **Status:** DONE
 
 Test:
 - AI timeout
@@ -621,7 +621,7 @@ Test:
 # 22. Phase 18 — Performance and Polish
 
 ## T-044 — Performance Review
-**Owner:** Member 3 | **Priority:** P1
+**Owner:** Member 3 | **Priority:** P1 | **Status:** DONE
 
 Check unnecessary AI calls, duplicate requests, excessive regeneration, slow loading, large responses, and unnecessary persistence calls.
 
@@ -671,7 +671,7 @@ Prepare a 2–4 minute demo covering:
 - differentiation
 
 ## T-048 — Demo Backup
-**Owner:** Member 3 | **Priority:** P1
+**Owner:** Member 3 | **Priority:** P1 | **Status:** DONE
 
 Prepare a stable demo project, known-good build, environment backup, and recovery instructions.
 
@@ -682,7 +682,7 @@ Do not fake live AI behavior.
 # 24. Phase 20 — Submission Preparation
 
 ## T-049 — GitHub / Documentation
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Prepare:
 - setup instructions
@@ -713,7 +713,7 @@ Prepare required Instagram content according to the official hackathon requireme
 Each participant completes their own required submission where individual submission is required.
 
 ## T-052 — LinkedIn Material
-**Owner:** Member 3 | **Priority:** P0
+**Owner:** Member 3 | **Priority:** P0 | **Status:** DONE
 
 Prepare required LinkedIn content including project, target users, problem, solution, workflow, features, technology, contribution, differentiation, Inkloom information, GitHub/live links, required tags, and the demo video uploaded directly to LinkedIn.
 
@@ -743,9 +743,9 @@ Each participant completes their own required submission where applicable.
 - [ ] `approved_decisions` cannot be silently overwritten
 - [ ] Explicit user approval is required
 - [ ] Revision history works
-- [ ] Dependency-aware review works
-- [ ] Scenario Probe does not silently overwrite the original
-- [ ] Scenario Probe supports accept/keep/edit
+- [x] Dependency-aware review works
+- [x] Scenario Probe does not silently overwrite the original
+- [x] Scenario Probe supports accept/keep/edit
 - [ ] AI output is schema validated
 - [ ] Retry limits are enforced
 - [ ] Failed AI output is visible
@@ -876,8 +876,8 @@ Stop and resolve the issue if:
 - [ ] AI workflow verified
 - [ ] Strategist verified
 - [ ] Critic verified
-- [ ] Dependency behavior verified
-- [ ] Scenario Probe verified
+- [x] Dependency behavior verified
+- [x] Scenario Probe verified
 - [ ] Consistency Audit verified
 
 ### Member 2
@@ -889,12 +889,12 @@ Stop and resolve the issue if:
 - [ ] Demo UX verified
 
 ### Member 3
-- [ ] Persistence verified
-- [ ] Revision history verified
-- [ ] Export verified
-- [ ] API/integration verified
-- [ ] Security verified
-- [ ] End-to-end QA verified
+- [x] Persistence verified
+- [x] Revision history verified
+- [x] Export verified
+- [x] API/integration verified
+- [x] Security verified
+- [x] End-to-end QA verified
 
 ### All Members
 - [ ] PRD requirements checked
