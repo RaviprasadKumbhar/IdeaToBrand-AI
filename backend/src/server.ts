@@ -27,9 +27,9 @@ app.get("/api/health", (_req, res) => {
 
 // Mount routes
 app.use("/api", exportRouter);
-app.use("/api", stagesRouter);
-app.use("/api", scenarioProbeRouter);
 app.use("/api", auditRouter);
+app.use("/api", scenarioProbeRouter);
+app.use("/api", stagesRouter);
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {

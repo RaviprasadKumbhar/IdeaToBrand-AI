@@ -395,7 +395,7 @@ Generate:
 # 15. Phase 11 — Dependency Engine
 
 ## T-028 — Dependency Map
-**Owner:** Member 1 | **Priority:** P0 | **Dependencies:** T-003, T-009
+**Owner:** Member 1 | **Priority:** P0 | **Dependencies:** T-003, T-009 | **Status:** DONE
 
 Implement dependency-aware downstream review.
 
@@ -412,7 +412,7 @@ Rules:
 # 16. Phase 12 — Scenario Probe
 
 ## T-029 — Scenario Probe Backend
-**Owner:** Member 1 | **Priority:** P0 | **Dependencies:** T-028
+**Owner:** Member 1 | **Priority:** P0 | **Dependencies:** T-028 | **Status:** DONE
 
 Implement:
 - scenario branch
@@ -439,7 +439,7 @@ Required actions:
 # 17. Phase 13 — Holistic Consistency Audit
 
 ## T-031 — Holistic Consistency Audit Engine
-**Owner:** Member 1 | **Priority:** P0 | **Dependencies:** T-026, T-028
+**Owner:** Member 1 | **Priority:** P0 | **Dependencies:** T-026, T-028 | **Status:** DONE
 
 **Critical ordering:** MUST run after Launch Prep.
 
@@ -552,7 +552,7 @@ Test:
 - dependency calculations
 
 ## T-039 — AI Workflow Testing
-**Owner:** Member 1 | **Priority:** P0
+**Owner:** Member 1 | **Priority:** P0 | **Status:** DONE
 
 Test:
 - Strategist
