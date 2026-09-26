@@ -46,12 +46,17 @@ export const ConsistencyFindingSchema = z.object({
 export const ConsistencyFindingsArraySchema = z.array(ConsistencyFindingSchema);
 
 export const DiscoverySchema = z.object({
+  brand_concept: z.string().optional(),
   core_problem: z.string().min(1, 'Core problem is required'),
+  proposed_solution: z.string().optional(),
   target_audience: z.string().min(1, 'Target audience is required'),
   context_situation: z.string().min(1, 'Context/situation is required'),
   user_goals: z.string().min(1, 'User goals are required'),
   constraints: z.string().min(1, 'Constraints are required'),
   value_desired_outcome: z.string().min(1, 'Value / desired outcome is required'),
+  differentiation: z.string().optional(),
+  brand_goals: z.string().optional(),
+  customer_needs: z.array(z.string()).optional(),
   open_questions: z.array(z.string().min(1)).default([]),
   known_facts: z.array(z.string().min(1)).default([]),
   inferred_assumptions: z.array(

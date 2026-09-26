@@ -6,6 +6,7 @@ import { exportRouter } from "./routes/export.js";
 import { stagesRouter } from "./routes/stages.js";
 import { scenarioProbeRouter } from "./routes/scenarioProbe.js";
 import { auditRouter } from "./routes/audit.js";
+import { interviewRouter } from "./routes/interview.js";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use("/api", exportRouter);
 app.use("/api", auditRouter);
 app.use("/api", scenarioProbeRouter);
 app.use("/api", stagesRouter);
+app.use("/api", interviewRouter);
 
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
