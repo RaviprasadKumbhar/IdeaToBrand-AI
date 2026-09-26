@@ -4,10 +4,10 @@
  * Mobile: Responsive Topbar + Drawer + Horizontal Stage Selector.
  * Professional SVG icons, high visual polish, zero raw emojis.
  */
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useFOILStore } from '../store/foilStore';
 import { useAuth } from '../context/AuthContext';
+import { useFOILStore } from '../store/foilStore';
 import type { StageName } from '../../../shared/types';
 
 interface StageRouteItem {
@@ -38,9 +38,22 @@ interface AppShellProps {
 export function AppShell({ children }: AppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { ctx, uiStates, resetProject } = useFOILStore();
   const { user, signOut } = useAuth();
+  const {
+    ctx,
+    uiStates,
+    resetProject,
+    cloudSaveStatus,
+    retrySave,
+    setActiveUser,
+  } = useFOILStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      setActiveUser(user.id);
+    }
+  }, [user?.id, setActiveUser]);
 
   const userDisplayName =
     user?.user_metadata?.full_name ||
@@ -131,10 +144,35 @@ export function AppShell({ children }: AppShellProps) {
                 ? String(ctx.user_facts['business_description'])
                 : 'New Brand Project'}
             </span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-green-700 font-medium bg-green-50 px-2 py-0.5 rounded-full border border-green-200 flex-shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" aria-hidden="true" />
-              Session Active
-            </span>
+            {cloudSaveStatus === 'saving' && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-700 font-medium bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 flex-shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" aria-hidden="true" />
+                Saving to Supabase...
+              </span>
+            )}
+            {cloudSaveStatus === 'saved' && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-green-700 font-medium bg-green-50 px-2.5 py-0.5 rounded-full border border-green-200 flex-shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true" />
+                Saved to Supabase
+              </span>
+            )}
+            {cloudSaveStatus === 'error' && (
+              <button
+                type="button"
+                onClick={() => retrySave()}
+                className="inline-flex items-center gap-1.5 text-[11px] text-red-700 font-medium bg-red-50 hover:bg-red-100 px-2.5 py-0.5 rounded-full border border-red-200 flex-shrink-0 cursor-pointer transition-colors"
+                title="Click to retry saving to Supabase"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" aria-hidden="true" />
+                Save failed — Retry
+              </button>
+            )}
+            {cloudSaveStatus === 'idle' && (
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-ink-600 font-medium bg-surface-100 px-2.5 py-0.5 rounded-full border border-border flex-shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true" />
+                Supabase Synced
+              </span>
+            )}
           </div>
         </div>
 
