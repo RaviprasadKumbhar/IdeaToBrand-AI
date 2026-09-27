@@ -146,7 +146,8 @@ export interface FOILStore {
   saveToCloud: (overrideUserId?: string) => Promise<boolean>;
   retrySave: () => Promise<boolean>;
 
-  // Session reset (new project)
+  // Session reset / creation (new project)
+  startNewProject: (input: IdeaInput) => Promise<boolean>;
   resetProject: () => void;
 
   // Project persistence loader (Phase 6)
@@ -184,6 +185,13 @@ export const useFOILStore = create<FOILStore>((set, get) => {
     activeUserId: null,
 
     setIdeaInput: (input) => {
+      const prevDesc = get().ctx.user_facts?.business_description;
+      const isNewConcept = Boolean(
+        prevDesc &&
+        input.business_description &&
+        String(prevDesc).trim() !== String(input.business_description).trim()
+      );
+
       set({ ideaInput: input });
       // Store user-provided facts explicitly in user_facts — never mixed with ai_assumptions
       set((state) => {
@@ -195,9 +203,22 @@ export const useFOILStore = create<FOILStore>((set, get) => {
             ...(input.category ? { category: input.category } : {}),
             ...(input.constraints ? { constraints: input.constraints } : {}),
           },
+          // Invalidate stale approved decisions and drafts if the fundamental business concept changed
+          ...(isNewConcept
+            ? {
+                approved_decisions: {},
+                stage_drafts: {},
+                critic_findings: [],
+                consistency_findings: [],
+                scenario_overrides: [],
+              }
+            : {}),
         };
         persistToSession(updatedCtx);
-        return { ctx: updatedCtx };
+        return {
+          ctx: updatedCtx,
+          uiStates: isNewConcept ? createInitialUIStates() : state.uiStates,
+        };
       });
       triggerAutosave(get);
     },
@@ -467,6 +488,63 @@ export const useFOILStore = create<FOILStore>((set, get) => {
       return get().saveToCloud();
     },
 
+    startNewProject: async (input: IdeaInput) => {
+      if (autosaveTimeout) {
+        clearTimeout(autosaveTimeout);
+        autosaveTimeout = null;
+      }
+      const newProjectId = uuid();
+      const newCtx: SharedContext = {
+        project_id: newProjectId,
+        user_facts: {
+          business_description: input.business_description,
+          ...(input.target_audience ? { target_audience: input.target_audience } : {}),
+          ...(input.category ? { category: input.category } : {}),
+          ...(input.constraints ? { constraints: input.constraints } : {}),
+        },
+        ai_assumptions: {},
+        approved_decisions: {},
+        stage_drafts: {},
+        critic_findings: [],
+        consistency_findings: [],
+        scenario_overrides: [],
+        revision_log: [],
+      };
+      const newUIStates = createInitialUIStates();
+      persistToSession(newCtx);
+      set({
+        ctx: newCtx,
+        uiStates: newUIStates,
+        ideaInput: input,
+        currentStage: 'discovery',
+        cloudSaveStatus: 'saving',
+        cloudSaveError: null,
+      });
+
+      const userId = get().activeUserId;
+      if (userId) {
+        const brandName = input.business_description.slice(0, 40);
+        const record: DbProjectRecord = {
+          id: newProjectId,
+          user_id: userId,
+          name: brandName,
+          description: input.business_description,
+          current_stage: 'discovery',
+          context: newCtx,
+          ui_states: newUIStates as Record<string, unknown>,
+        };
+        const { error } = await saveProjectToDb(record);
+        if (error) {
+          set({ cloudSaveStatus: 'error', cloudSaveError: error.message });
+          return false;
+        } else {
+          set({ cloudSaveStatus: 'saved', lastSavedAt: new Date().toISOString(), cloudSaveError: null });
+          return true;
+        }
+      }
+      return true;
+    },
+
     loadProjectFromCloud: async (userId: string) => {
       set({ activeUserId: userId, cloudSaveError: null });
       const { data, error } = await fetchUserProjects(userId);
@@ -476,23 +554,35 @@ export const useFOILStore = create<FOILStore>((set, get) => {
       }
 
       if (data && data.length > 0) {
-        const latest = data[0];
+        const currentCtx = get().ctx;
+        const matchingProject = data.find((p) => p.id === currentCtx.project_id);
+        const hasActiveFreshIdea =
+          Boolean(currentCtx.user_facts?.business_description) && !matchingProject;
+
+        if (hasActiveFreshIdea) {
+          // Current session has an active freshly initiated project that hasn't been synced to cloud yet;
+          // Persist it immediately rather than clobbering it with an old stale project!
+          await get().saveToCloud(userId);
+          return true;
+        }
+
+        const projectToLoad = matchingProject || data[0];
         const loadedCtx: SharedContext = {
           ...createInitialContext(),
-          ...latest.context,
-          project_id: latest.id || latest.context.project_id,
+          ...projectToLoad.context,
+          project_id: projectToLoad.id || projectToLoad.context?.project_id,
         };
         const loadedUIStates = {
           ...createInitialUIStates(),
-          ...(latest.ui_states as Record<StageName, StageUIState>),
+          ...(projectToLoad.ui_states as Record<StageName, StageUIState>),
         };
         persistToSession(loadedCtx);
         set({
           ctx: loadedCtx,
           uiStates: loadedUIStates,
-          currentStage: (latest.current_stage as StageName | 'idea-input') || 'idea-input',
+          currentStage: (projectToLoad.current_stage as StageName | 'idea-input') || 'idea-input',
           cloudSaveStatus: 'saved',
-          lastSavedAt: latest.updated_at || new Date().toISOString(),
+          lastSavedAt: projectToLoad.updated_at || new Date().toISOString(),
           cloudSaveError: null,
         });
         return true;
@@ -522,6 +612,10 @@ export const useFOILStore = create<FOILStore>((set, get) => {
     },
 
     resetProject: () => {
+      if (autosaveTimeout) {
+        clearTimeout(autosaveTimeout);
+        autosaveTimeout = null;
+      }
       sessionStorage.removeItem(SESSION_KEY);
       const newCtx = createInitialContext();
       const newUI = createInitialUIStates();

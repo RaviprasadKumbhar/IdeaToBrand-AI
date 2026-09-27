@@ -296,11 +296,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await resetPasswordForEmail(email);
       if (error) {
-        return { error: classifyAuthError(error) };
+        return { error: classifyAuthError(error, 'reset') };
       }
       return { error: null };
     } catch (err) {
-      return { error: classifyAuthError(err) };
+      return { error: classifyAuthError(err, 'reset') };
     }
   }
 
@@ -326,11 +326,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await resendVerificationEmail(email);
       if (error) {
-        return { error: classifyAuthError(error) };
+        return { error: classifyAuthError(error, 'verification') };
       }
       return { error: null };
     } catch (err) {
-      return { error: classifyAuthError(err) };
+      return { error: classifyAuthError(err, 'verification') };
     }
   }
 

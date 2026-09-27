@@ -48,16 +48,27 @@ stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response)
   try {
     switch (stage) {
       case "discovery": {
-        const ideaText =
+        const rawIdea =
           payload.idea_text ||
           payload.business_description ||
           payload.idea_input?.business_description ||
-          (typeof userFacts === "object" ? Object.values(userFacts).join(" ") : "") ||
-          "AI-driven innovative solution";
+          (userFacts && typeof userFacts === "object"
+            ? (userFacts.business_description || Object.values(userFacts).filter(Boolean).join(" "))
+            : "");
+
+        const ideaText = typeof rawIdea === "string" ? rawIdea.trim() : "";
+        if (!ideaText) {
+          return res.status(400).json({
+            stage: "discovery",
+            error_type: "invalid_input",
+            message: "Missing required startup idea or business description. Please provide a clear concept to generate your brand discovery plan.",
+            retryable: false,
+          });
+        }
 
         const rawFacts = Array.isArray(payload.known_facts)
           ? payload.known_facts
-          : Object.values(userFacts).map(String);
+          : Object.values(userFacts).map(String).filter((s) => s.trim().length > 0);
 
         const result = await discoveryService.generateDiscoveryDraft(
           {
@@ -175,51 +186,3 @@ stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response)
   }
 });
 
-/**
- * POST /api/scenario-probe
- * T-029 Scenario Probe backend endpoint.
- * Runs isolated branch exploration without overwriting the authoritative approved decisions.
- */
-stagesRouter.post("/scenario-probe", async (req: Request, res: Response) => {
-  const { triggered_from_stage, what_if_input, approved_decisions } = req.body || {};
-
-  if (!triggered_from_stage || !what_if_input) {
-    return res.status(400).json({
-      error_type: "invalid_request",
-      message: "Missing 'triggered_from_stage' or 'what_if_input' in request body.",
-      retryable: false,
-    });
-  }
-
-  const scenarioId = `scenario_${Date.now()}`;
-  const decisions = approved_decisions || {};
-
-  // Compute downstream affected stages
-  const stageOrder: StageName[] = [
-    "discovery",
-    "positioning",
-    "naming_personality",
-    "tagline_pitch",
-    "visual_brief",
-    "voice_messaging",
-    "launch_prep",
-  ];
-  const triggerIdx = stageOrder.indexOf(triggered_from_stage);
-  const affectedStages = triggerIdx >= 0 ? stageOrder.slice(triggerIdx + 1) : [];
-
-  return res.status(200).json({
-    scenario_id: scenarioId,
-    what_if_input,
-    triggered_from_stage,
-    affected_stages: affectedStages,
-    changed_fields: [
-      {
-        stage: affectedStages[0] || triggered_from_stage,
-        field_name: "strategic_focus",
-        original_value: "Standard market trajectory",
-        branch_value: `Simulated alternative under premise: "${what_if_input}"`,
-      },
-    ],
-    branch_critic_findings: [],
-  });
-});

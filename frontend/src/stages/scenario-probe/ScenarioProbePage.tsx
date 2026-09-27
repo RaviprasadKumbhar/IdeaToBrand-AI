@@ -70,7 +70,7 @@ export function ScenarioProbePage() {
       const probeResult = await runScenarioProbe(
         triggeredFrom,
         whatIfInput.trim(),
-        store.ctx.approved_decisions as Record<string, unknown>
+        store.ctx
       );
       setResult(probeResult);
       setBranchFindings(probeResult.branch_critic_findings.map(f => ({ ...f, id: f.id ?? uuid() })));

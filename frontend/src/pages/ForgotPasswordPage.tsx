@@ -1,21 +1,33 @@
 /**
  * ForgotPasswordPage — Triggers Supabase password reset email.
  */
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { isRateLimitError, AuthFriendlyError } from '../lib/authErrors';
 
 export function ForgotPasswordPage() {
   const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const [error, setError] = useState<{ message: string; subtext?: string } | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!email.trim()) {
-      setError('Please enter your email address.');
+    if (!email.trim() || cooldown > 0) {
+      if (!email.trim()) {
+        setError({ message: 'Please enter your email address.' });
+      }
       return;
     }
 
@@ -26,7 +38,12 @@ export function ForgotPasswordPage() {
     setLoading(false);
 
     if (resetError) {
-      setError(resetError.message || 'Unable to send password reset link.');
+      const msg = resetError.message || 'Unable to send password reset link.';
+      const sub = (resetError as AuthFriendlyError).subtext;
+      setError({ message: msg, subtext: sub });
+      if (isRateLimitError(resetError)) {
+        setCooldown(60);
+      }
     } else {
       setSuccess(true);
     }
@@ -59,9 +76,16 @@ export function ForgotPasswordPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
         <div className="card bg-white p-7 border-border shadow-card">
           {error && (
-            <div role="alert" className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 flex items-start gap-2">
-              <span className="font-bold text-red-500">✕</span>
-              <span>{error}</span>
+            <div role="alert" className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700 space-y-1">
+              <div className="flex items-start gap-2">
+                <span className="font-bold text-red-500">✕</span>
+                <span className="font-medium">{error.message}</span>
+              </div>
+              {error.subtext && (
+                <p className="text-[11px] text-red-600 pl-4 leading-relaxed opacity-90">
+                  {error.subtext}
+                </p>
+              )}
             </div>
           )}
 
@@ -100,10 +124,14 @@ export function ForgotPasswordPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || cooldown > 0}
                 className="btn-primary w-full py-2.5 text-sm font-semibold tracking-wide disabled:opacity-50 mt-2"
               >
-                {loading ? 'Sending link...' : 'Send Reset Link'}
+                {loading
+                  ? 'Sending link...'
+                  : cooldown > 0
+                  ? `Wait ${cooldown}s before requesting again`
+                  : 'Send Reset Link'}
               </button>
             </form>
           )}
