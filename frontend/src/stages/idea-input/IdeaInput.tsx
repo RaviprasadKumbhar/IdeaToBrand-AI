@@ -47,17 +47,17 @@ export function IdeaInput() {
   const navigate = useNavigate();
   const { startNewProject, ideaInput, ctx } = useFOILStore();
 
-  const [description, setDescription] = useState(
-    ideaInput?.business_description ?? ctx?.user_facts?.business_description ?? ''
+  const [description, setDescription] = useState<string>(
+    String(ideaInput?.business_description ?? ctx?.user_facts?.business_description ?? '')
   );
-  const [audience, setAudience] = useState(
-    ideaInput?.target_audience ?? ctx?.user_facts?.target_audience ?? ''
+  const [audience, setAudience] = useState<string>(
+    String(ideaInput?.target_audience ?? ctx?.user_facts?.target_audience ?? '')
   );
-  const [category, setCategory] = useState(
-    ideaInput?.category ?? ctx?.user_facts?.category ?? ''
+  const [category, setCategory] = useState<string>(
+    String(ideaInput?.category ?? ctx?.user_facts?.category ?? '')
   );
-  const [constraints, setConstraints] = useState(
-    ideaInput?.constraints ?? ctx?.user_facts?.constraints ?? ''
+  const [constraints, setConstraints] = useState<string>(
+    String(ideaInput?.constraints ?? ctx?.user_facts?.constraints ?? '')
   );
   const [showOptional, setShowOptional] = useState(
     !!(ideaInput?.target_audience || ctx?.user_facts?.target_audience ||
