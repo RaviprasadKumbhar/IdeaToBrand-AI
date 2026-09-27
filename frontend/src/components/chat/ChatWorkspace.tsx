@@ -379,7 +379,7 @@ export function ChatWorkspace() {
         {
           id: nextId('error'),
           sender: 'assistant',
-          text: errMsg || "FOIL couldn't generate this step right now.",
+          text: errMsg || "FOIL couldn't generate this step right now. Please retry.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           isError: true,
         },
