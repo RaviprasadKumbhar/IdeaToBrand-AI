@@ -73,7 +73,7 @@ export function validateExportEligibility(
   const allConsistencyFindings: ConsistencyFinding[] = [
     ...consistencyFindings,
     // also detect any findings in critic_findings marked for consistency_audit
-    ...(ctx.critic_findings
+    ...((ctx.critic_findings || [])
       .filter((f) => f.stage === "consistency_audit")
       .map((f) => ({
         id: f.id,

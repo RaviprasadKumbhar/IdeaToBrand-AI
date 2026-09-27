@@ -64,9 +64,10 @@ export function assembleBrandKit(
     tagline.selected_tagline || tagline.tagline_options?.[0] || "";
 
   // Combine resolved consistency findings
+  const criticFindings = ctx.critic_findings || [];
   const resolvedFindings: ConsistencyFinding[] = [
     ...consistencyFindings.filter((f) => f.user_action !== null),
-    ...ctx.critic_findings
+    ...criticFindings
       .filter((f) => f.stage === "consistency_audit" && f.user_action !== null)
       .map((f) => ({
         id: f.id,
@@ -322,7 +323,7 @@ ${
 ${
   inferredAssumptions.length > 0
     ? inferredAssumptions.map((a) => `- **Assumption:** ${a.value}\n  *Rationale:* ${a.rationale}`).join("\n")
-    : Object.keys(ctx.ai_assumptions).length > 0
+    : ctx.ai_assumptions && Object.keys(ctx.ai_assumptions).length > 0
     ? Object.entries(ctx.ai_assumptions)
         .map(([k, v]) => `- **${k}:** ${v.value} *(Rationale: ${v.rationale})*`)
         .join("\n")
