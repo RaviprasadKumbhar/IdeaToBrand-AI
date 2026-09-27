@@ -79,14 +79,26 @@ export function extractContextualSignals(idea: string): IdeaContext {
   const isEdTech = /student|college|university|exam|study|campus|tutor|course|learn|curriculum/i.test(lower) && !isFoodSnack;
   const isHealthWellness = /health|wellness|fitness|clinic|therapy|mental|care|medical|workout/i.test(lower) && !isFoodSnack;
 
-  // Geography signals
+  // Geography signals with strict word boundaries
   let geography = 'Global';
-  if (/india|indian|delhi|mumbai|bangalore|bengaluru|pune|hyderabad|desi|bharat/i.test(lower)) {
+  if (/\b(?:india|indian|delhi|mumbai|bangalore|bengaluru|pune|hyderabad|chennai|kolkata|desi|bharat)\b/i.test(lower)) {
     geography = 'India';
-  } else if (/us|usa|united states|american|california|new york/i.test(lower)) {
+  } else if (/\b(?:nepal|nepalese|kathmandu|himalaya|himalayan)\b/i.test(lower)) {
+    geography = 'Nepal';
+  } else if (/\b(?:us|usa|united states|u\.s\.|american|california|new york|texas|chicago|seattle|san francisco)\b/i.test(lower)) {
     geography = 'United States';
-  } else if (/uk|london|britain|europe|european/i.test(lower)) {
+  } else if (/\b(?:uk|u\.k\.|london|britain|british|england|europe|european|germany|france|netherlands)\b/i.test(lower)) {
     geography = 'Europe';
+  } else if (/\b(?:japan|japanese|tokyo|kyoto)\b/i.test(lower)) {
+    geography = 'Japan';
+  } else if (/\b(?:singapore|southeast asia|indonesia|malaysia|vietnam|thailand)\b/i.test(lower)) {
+    geography = 'Southeast Asia';
+  } else if (/\b(?:canada|canadian|toronto|vancouver)\b/i.test(lower)) {
+    geography = 'Canada';
+  } else if (/\b(?:australia|australian|sydney|melbourne)\b/i.test(lower)) {
+    geography = 'Australia';
+  } else if (/\b(?:africa|kenya|nigeria|south africa|ghana)\b/i.test(lower)) {
+    geography = 'Africa';
   }
 
   // Price & Positioning tier
@@ -99,13 +111,21 @@ export function extractContextualSignals(idea: string): IdeaContext {
     tier = 'enterprise';
   }
 
-  // Audience signals
+  // Beneficiary / Audience signals
   let audience = '';
-  const forMatch = rawIdea.match(/\b(?:for|targeted at|serving|helping|empowering|connecting)\s+([a-zA-Z\s]{3,45}?)(?:\s+(?:to\s+[a-z]+|in\b|who\b|that\b|with\b|[.,;]|$))/i);
-  if (forMatch && forMatch[1]) {
-    const candidate = forMatch[1].trim();
-    if (!/^(?:my brand|myself|us|everyone|people|start|build)$/i.test(candidate)) {
-      audience = candidate;
+  // Check for explicit "to [beneficiary]" or "serving [beneficiary]"
+  const toBeneficiaryMatch = rawIdea.match(/\b(?:to|serving|for|helping|empowering|targeted at)\s+([a-zA-Z\s]{3,45}?(?:clinics?|hospitals?|patients?|doctors?|nurses?|practitioners?|students?|teachers?|users?|consumers?|families?|communities?|shops?|stores?|businesses?|teams?|organizations?|drivers?|workers?|riders?|clients?|customers?|patrons?|professionals?|women|men|parents?|seniors?|children|kids|youth|operators?|founders?|developers?|engineers?|chefs?))\b/i);
+  if (toBeneficiaryMatch && toBeneficiaryMatch[1]) {
+    audience = toBeneficiaryMatch[1].trim();
+  }
+
+  if (!audience) {
+    const forMatch = rawIdea.match(/\b(?:for|targeted at|serving|helping|empowering|connecting)\s+([a-zA-Z\s]{3,45}?)(?:\s+(?:to\s+[a-z]+|in\b|who\b|that\b|with\b|[.,;]|$))/i);
+    if (forMatch && forMatch[1]) {
+      const candidate = forMatch[1].trim();
+      if (!/^(?:my brand|myself|us|everyone|people|start|build|urgent|medical supplies|supplies|products?|items?|goods|parts)$/i.test(candidate)) {
+        audience = candidate;
+      }
     }
   }
 
@@ -422,23 +442,28 @@ export function generateContextualBrandPlan(
   const cleanNoun = ctx.cleanedIdea
     .replace(/[^a-zA-Z\s]/g, ' ')
     .split(/\s+/)
-    .filter(w => !/^(a|an|the|to|for|in|on|with|and|of|that|helps|build|create|platform|service|brand|ai|powered|aipowered|app|system|using|fleet|tool)$/i.test(w) && w.length >= 3);
+    .filter(w => !/^(a|an|the|to|for|in|on|with|and|of|that|helps|build|create|platform|service|brand|ai|powered|aipowered|app|system|using|fleet|tool|autonomous|automated|automatic|intelligent|smart|digital|online|virtual|urgent|quick|fast|direct|custom|modern|new|clean|green|first|next|daily|reliable|seamless|effective|innovative|best|good|great)$/i.test(w) && w.length >= 3);
 
   const primaryKeyword = cleanNoun[0] ? cleanNoun[0][0].toUpperCase() + cleanNoun[0].slice(1).toLowerCase() : 'Venture';
-  const secondaryKeyword = cleanNoun[1] ? cleanNoun[1][0].toUpperCase() + cleanNoun[1].slice(1).toLowerCase() : 'Pulse';
+  const secondaryCandidate = cleanNoun[1] ? cleanNoun[1][0].toUpperCase() + cleanNoun[1].slice(1).toLowerCase() : 'Pulse';
+  const secondaryKeyword = secondaryCandidate.toLowerCase() === primaryKeyword.toLowerCase() ? 'Craft' : secondaryCandidate;
 
   const dynamicAudience = ctx.audience
-    ? `Dedicated ${ctx.audience} seeking reliable, specialized outcomes in ${ctx.geography}`
+    ? `${ctx.audience.charAt(0).toUpperCase() + ctx.audience.slice(1)} and key community stakeholders seeking reliable, specialized outcomes in ${ctx.geography}`
     : `Discerning practitioners and teams seeking modernized solutions in ${ctx.domain}`;
 
-  const dynamicProblem = `Current alternatives in the ${ctx.domain} space are fragmented, overpriced, and fail to address the specific workflows required by ${dynamicAudience}.`;
-  const dynamicValueProp = `Delivering predictable, high-impact results with verified efficiency, tailored specifically for ${dynamicAudience}.`;
+  const dynamicProblem = `Current alternatives in the ${ctx.domain} space are fragmented, slow, or lack the specialized reliability required by ${dynamicAudience}.`;
+  const dynamicValueProp = `Dependable, purpose-engineered solutions delivering verified efficiency, tailored specifically for ${dynamicAudience}.`;
 
   let primaryColor = '#2563EB';
   let palette = ['#1D4ED8', '#2563EB', '#60A5FA', '#0F172A', '#F8FAFC'];
   let archetype = 'The Innovative Pioneer';
 
-  if (ctx.tier === 'premium') {
+  if (/drone|flight|aero|delivery|logistics|transport/i.test(rawIdea)) {
+    primaryColor = '#0284C7';
+    palette = ['#0369A1', '#0284C7', '#38BDF8', '#0F172A', '#F0F9FF'];
+    archetype = 'The Boundary Breaker';
+  } else if (ctx.tier === 'premium') {
     primaryColor = '#0F172A';
     palette = ['#020617', '#0F172A', '#334155', '#D4AF37', '#FAF8F5'];
     archetype = 'The Refined Creator';
@@ -446,10 +471,23 @@ export function generateContextualBrandPlan(
     primaryColor = '#0284C7';
     palette = ['#0369A1', '#0284C7', '#38BDF8', '#10B981', '#F0F9FF'];
     archetype = 'The Grounded Steward';
-  } else if (ctx.isHealthWellness) {
+  } else if (ctx.isHealthWellness || /medical|clinic|hospital|patient|doctor/i.test(rawIdea)) {
     primaryColor = '#0D9488';
     palette = ['#0F766E', '#0D9488', '#2DD4BF', '#0F172A', '#F0FDFA'];
     archetype = 'The Empathetic Healer';
+  }
+
+  let dynamicTagline = `Purpose-Built Excellence for Modern ${primaryKeyword}.`;
+  if (/drone|delivery|transport|logistics/i.test(rawIdea) && /medical|clinic|health|urgent/i.test(rawIdea)) {
+    dynamicTagline = 'Lifesaving Reach Where Roads Cannot Go.';
+  } else if (/drone|aero|flight|delivery|fleet/i.test(rawIdea)) {
+    dynamicTagline = 'Precision Mobility Above the Grid.';
+  } else if (/medical|clinic|hospital|care|health/i.test(rawIdea)) {
+    dynamicTagline = 'Critical Care When Every Minute Matters.';
+  } else if (ctx.isSaaS || /software|cloud|platform/i.test(rawIdea)) {
+    dynamicTagline = `Smarter Operations. Zero Friction.`;
+  } else if (ctx.tier === 'premium') {
+    dynamicTagline = `Elevated Craftsmanship for Discerning Tastes.`;
   }
 
   return {
@@ -476,7 +514,7 @@ export function generateContextualBrandPlan(
         rationale: 'Signals modern, forward-thinking innovation in the category',
       },
     ],
-    tagline: `Purpose-Built Excellence for ${primaryKeyword}.`,
+    tagline: dynamicTagline,
     visual_direction: {
       primary_color: primaryColor,
       palette,

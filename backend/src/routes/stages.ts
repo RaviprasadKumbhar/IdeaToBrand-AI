@@ -24,9 +24,76 @@ const launchService = new LaunchPrepStageService();
 const auditService = new ConsistencyAuditService();
 const criticEngine = new CriticEngine();
 
+// ─── Fact and Idea Normalization Helpers ─────────────────────────────────────
+function normalizeFactValue(fact: unknown): string | null {
+  if (typeof fact === 'string') {
+    const trimmed = fact.trim();
+    if (!trimmed || trimmed === '[object Object]') return null;
+    return trimmed;
+  }
+  if (!fact || typeof fact !== 'object') return null;
+  const obj = fact as Record<string, unknown>;
+  const textVal = obj.text || obj.value || obj.description || obj.fact || obj.name;
+  if (typeof textVal === 'string' && textVal.trim() && textVal.trim() !== '[object Object]') {
+    const label = typeof obj.label === 'string' && obj.label.trim() ? `${obj.label.trim()}: ` : '';
+    return `${label}${textVal.trim()}`;
+  }
+  return null;
+}
+
+function extractCleanFacts(source: unknown): string[] {
+  if (!source) return [];
+  if (Array.isArray(source)) {
+    return source.map(normalizeFactValue).filter((s): s is string => Boolean(s));
+  }
+  if (typeof source === 'object') {
+    const values = Object.values(source as Record<string, unknown>);
+    return values
+      .flatMap((v) => (Array.isArray(v) ? v.map(normalizeFactValue) : [normalizeFactValue(v)]))
+      .filter((s): s is string => Boolean(s));
+  }
+  return [];
+}
+
+function extractCleanIdeaText(payload: Record<string, any>, userFacts: Record<string, any>): string {
+  const candidates = [
+    payload.idea_text,
+    payload.business_description,
+    payload.idea,
+    payload.concept,
+    payload.idea_input?.business_description,
+    userFacts?.business_description,
+    userFacts?.idea_text,
+    userFacts?.concept,
+  ];
+
+  for (const c of candidates) {
+    if (typeof c === 'string') {
+      const trimmed = c.trim();
+      if (trimmed && trimmed !== '[object Object]') {
+        return trimmed;
+      }
+    }
+  }
+
+  // Fallback: search for first non-object, descriptive string value in userFacts
+  if (userFacts && typeof userFacts === 'object') {
+    for (const val of Object.values(userFacts)) {
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (trimmed && trimmed.length > 5 && trimmed !== '[object Object]') {
+          return trimmed;
+        }
+      }
+    }
+  }
+
+  return '';
+}
+
 /**
  * POST /api/stages/:stage/generate
- * Unified generation endpoint for all 7 generative brand stages.
+ * Unified dynamic stage generator for all FOIL pipeline stages.
  */
 stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response) => {
   const stage = req.params.stage as StageName;
@@ -51,15 +118,7 @@ stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response)
   try {
     switch (stage) {
       case "discovery": {
-        const rawIdea =
-          payload.idea_text ||
-          payload.business_description ||
-          payload.idea_input?.business_description ||
-          (userFacts && typeof userFacts === "object"
-            ? (userFacts.business_description || Object.values(userFacts).filter(Boolean).join(" "))
-            : "");
-
-        const ideaText = typeof rawIdea === "string" ? rawIdea.trim() : "";
+        const ideaText = extractCleanIdeaText(payload, userFacts);
         if (!ideaText) {
           return res.status(400).json({
             stage: "discovery",
@@ -69,9 +128,9 @@ stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response)
           });
         }
 
-        const rawFacts = Array.isArray(payload.known_facts)
-          ? payload.known_facts
-          : Object.values(userFacts).map(String).filter((s) => s.trim().length > 0);
+        const rawFacts = payload.known_facts
+          ? extractCleanFacts(payload.known_facts)
+          : extractCleanFacts(userFacts);
 
         const result = await discoveryService.generateDiscoveryDraft(
           {

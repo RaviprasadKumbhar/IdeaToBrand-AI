@@ -77,8 +77,15 @@ function extractContextFromPrompt(prompt: string) {
 
   const factsMatch = prompt.match(/Confirmed User Facts:\s*([\s\S]*?)(?=\n\n|\n[A-Z]|$)/i);
   if (factsMatch && factsMatch[1]) {
-    const lines = factsMatch[1].split('\n').map((l) => l.replace(/^-\s*/, '').trim()).filter(Boolean);
+    const lines = factsMatch[1]
+      .split('\n')
+      .map((l) => l.replace(/^-\s*/, '').trim())
+      .filter((l) => l && !l.includes('[object Object]'));
     facts.push(...lines);
+  }
+
+  if (concept.includes('[object Object]')) {
+    concept = '';
   }
 
   // Clean founder intent lead-in phrases so the core business offering is isolated
@@ -86,12 +93,23 @@ function extractContextFromPrompt(prompt: string) {
     .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building|i\'d like to|looking to|our goal is to)\s+(?:build|create|launch|start|develop|make|offer|sell|provide|design)?\s*/i, '')
     .trim();
 
-  // Extract human audience from cleaned concept using precise preposition and verb boundaries
-  const forMatch = cleanedIdea.match(/\b(?:for|serving|targeted at|helping|connecting|enabling|empowering|assisting)\s+([a-zA-Z\s]{3,40}?)(?:\s+(?:to\s+[a-z]+|manage|sell|prepare|find|build|scale|grow|automate|book|order|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
-  if (forMatch && forMatch[1]) {
-    const candidate = forMatch[1].trim();
-    if (!/^(?:my brand|myself|us|start|build|them|everyone|people|exams?|university exams?|tests?|interviews?)$/i.test(candidate)) {
+  // Beneficiary-first audience matching against the founder's raw concept (never the system prompt)
+  const toBeneficiaryMatch = cleanedIdea.match(/\b(?:to|serving|for|helping|empowering|targeted at)\s+([a-zA-Z\s]{3,45}?(?:clinics?|hospitals?|patients?|doctors?|nurses?|practitioners?|students?|teachers?|users?|consumers?|families?|communities?|shops?|stores?|businesses?|teams?|organizations?|drivers?|workers?|riders?|clients?|customers?|patrons?|professionals?|women|men|parents?|seniors?|children|kids|youth|operators?|developers?|engineers?|chefs?))\b/i);
+  if (toBeneficiaryMatch && toBeneficiaryMatch[1]) {
+    const candidate = toBeneficiaryMatch[1].trim();
+    if (!/^(?:my brand|myself|us|start|build|them|everyone|people)$/i.test(candidate)) {
       audience = candidate;
+    }
+  }
+
+  // Extract human audience from cleaned concept using precise preposition and verb boundaries
+  if (!audience) {
+    const forMatch = cleanedIdea.match(/\b(?:for|serving|targeted at|helping|connecting|enabling|empowering|assisting)\s+([a-zA-Z\s]{3,40}?)(?:\s+(?:to\s+[a-z]+|manage|sell|prepare|find|build|scale|grow|automate|book|order|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
+    if (forMatch && forMatch[1]) {
+      const candidate = forMatch[1].trim();
+      if (!/^(?:my brand|myself|us|start|build|them|everyone|people|exams?|university exams?|tests?|interviews?|urgent|medical supplies|supplies|products?|items?|goods|parts)$/i.test(candidate)) {
+        audience = candidate;
+      }
     }
   }
 
@@ -125,16 +143,16 @@ export function extractScenarioFromPrompt(prompt: string): string | null {
 }
 
 function deriveDynamicBrandName(concept: string): string {
-  if (!concept || concept.trim().length === 0) return 'VenturePulse';
+  if (!concept || concept.trim().length === 0 || concept.includes('[object Object]')) return 'VenturePulse';
   const clean = concept.replace(/[^a-zA-Z\s]/g, '').trim();
-  const words = clean.split(/\s+/).filter(w => !/^(a|an|the|to|for|in|on|with|and|of|that|helps|build|create|platform)$/i.test(w));
+  const words = clean.split(/\s+/).filter(w => !/^(a|an|the|to|for|in|on|with|and|of|that|helps|build|create|platform|service|brand|app|tool|system|using|fleet|autonomous|automated|automatic|intelligent|smart|digital|online|virtual|urgent|quick|fast|direct|custom|modern|new|clean|green|first|next|daily|reliable|seamless|effective|innovative|best|good|great)$/i.test(w));
   if (words.length >= 2) {
     const w1 = words[0][0].toUpperCase() + words[0].slice(1).toLowerCase();
     const w2 = words[1][0].toUpperCase() + words[1].slice(1).toLowerCase();
     return `${w1}${w2}`;
   } else if (words.length === 1) {
     const w = words[0][0].toUpperCase() + words[0].slice(1).toLowerCase();
-    return `${w}Flow`;
+    return `${w}Pulse`;
   }
   return 'NovaBridge';
 }
@@ -289,7 +307,11 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
   }
 
   const { concept, audience, facts } = extractContextFromPrompt(prompt);
-  const userIdea = concept || 'Innovative startup service';
+  let userIdea = concept || 'Innovative startup service';
+  if (userIdea.includes('[object Object]')) {
+    userIdea = 'Innovative startup service';
+  }
+  const cleanConcept = userIdea.replace(/^(?:a|an|the|our|my)\s+/i, '').trim();
 
   // Scenario Override Detection
   const scenarioOverride = extractScenarioFromPrompt(prompt);
@@ -742,10 +764,10 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
             {
               title: `The Modern ${dynamicName} Standard`,
               category: 'Direct-to-Market Platform',
-              target_audience: audience || `Target users seeking dedicated solutions for ${userIdea.slice(0, 60)}`,
-              core_problem: `Current solutions for ${userIdea.slice(0, 60)} are fragmented, overpriced, or lack customer-first transparency`,
-              differentiator: `Purpose-built platform engineered specifically for seamless ${userIdea.slice(0, 50)} execution`,
-              value_proposition: `Dependable, beautifully designed ${userIdea.slice(0, 50)} built for modern customer needs`,
+              target_audience: audience || `Target users seeking dedicated solutions for ${cleanConcept.slice(0, 60)}`,
+              core_problem: `Current solutions for ${cleanConcept.slice(0, 60)} are fragmented, overpriced, or lack customer-first transparency`,
+              differentiator: `Purpose-built platform engineered specifically for seamless ${cleanConcept.slice(0, 50)} execution`,
+              value_proposition: `Dependable, beautifully designed ${cleanConcept.slice(0, 50)} built for modern customer needs`,
               competitive_angle: 'Provides direct specialized focus rather than generic mass-market compromises',
               strategic_rationale: 'Taps into unsatisfied demand from users seeking tailored quality and speed',
               potential_weakness: 'Requires educating early adopters on specialized vs generic alternatives',
@@ -757,7 +779,7 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
               target_audience: audience || `Forward-thinking adopters and organizations in this domain`,
               core_problem: `Legacy alternatives lack automation, speed, and modern user experience`,
               differentiator: `Frictionless automated workflow tailored to everyday customer needs`,
-              value_proposition: `Smarter, faster ${userIdea.slice(0, 50)} with measurable daily convenience`,
+              value_proposition: `Smarter, faster ${cleanConcept.slice(0, 50)} with measurable daily convenience`,
               competitive_angle: 'Radical simplicity and direct value delivery compared to legacy vendors',
               strategic_rationale: 'Capitalizes on market shift toward agile, intuitive specialized tools',
               potential_weakness: 'Must rapidly establish trust through early customer proof points',
@@ -944,14 +966,14 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
 
         // Generic / Custom Idea
         return JSON.stringify({
-          core_problem: `Customers seeking ${userIdea.slice(0, 70)} encounter fragmentation, high costs, or lack of tailored, reliable service in the current market.`,
-          target_audience: audience || `Target customers and early adopters seeking dedicated solutions for ${userIdea.slice(0, 60)}`,
-          context_situation: `Entering the market to deliver specialized, modern ${userIdea.slice(0, 60)}`,
-          user_goals: `Establish a reputable, recognized brand and solve key user pain points in ${userIdea.slice(0, 60)}`,
+          core_problem: `Customers seeking ${cleanConcept.slice(0, 70)} encounter fragmentation, high costs, or lack of tailored, reliable service in the current market.`,
+          target_audience: audience || `Target customers and early adopters seeking dedicated solutions for ${cleanConcept.slice(0, 60)}`,
+          context_situation: `Entering the market to deliver specialized, modern ${cleanConcept.slice(0, 60)}`,
+          user_goals: `Establish a reputable, recognized brand and solve key user pain points in ${cleanConcept.slice(0, 60)}`,
           constraints: 'Initial operational focus on core customer satisfaction and verified value delivery',
           value_desired_outcome: 'Authentic, dependable service delivery and long-term customer trust',
           open_questions: ['What initial customer acquisition channel provides the strongest retention and referral loops?'],
-          known_facts: facts.length > 0 ? facts : [userIdea],
+          known_facts: facts.length > 0 ? facts.filter(f => !f.includes('[object Object]')) : [cleanConcept],
           inferred_assumptions: [
             {
               value: 'Early adopters value specialized expertise and responsive support over generic mass-market providers',

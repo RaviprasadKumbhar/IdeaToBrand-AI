@@ -85,8 +85,19 @@ export class DiscoveryStageService {
       throw err;
     }
 
-    const userFactsList = input.user_facts || [];
-    const constraintsList = input.constraints || [];
+    const userFactsList = (input.user_facts || [])
+      .map((f: any) => {
+        if (typeof f === 'string') return f.trim();
+        if (f && typeof f === 'object') {
+          const val = f.text || f.value || f.description || f.fact;
+          if (typeof val === 'string' && val.trim()) {
+            return f.label ? `${f.label}: ${val.trim()}` : val.trim();
+          }
+        }
+        return '';
+      })
+      .filter((s) => s.length > 0 && s !== '[object Object]');
+    const constraintsList = (input.constraints || []).filter((c) => typeof c === 'string' && c.trim().length > 0);
 
     const prompt = `=== SYSTEM INSTRUCTIONS ===
 You are the Strategist AI for FOIL. Your role is to analyze a founder's startup idea and build a structured, grounded Discovery record.
@@ -143,8 +154,8 @@ Respond with valid JSON:
 
     // Guaranteed invariant: user-provided facts are strictly preserved in known_facts
     const mergedKnownFacts = Array.from(
-      new Set([...userFactsList, ...execution.data.known_facts])
-    );
+      new Set([...userFactsList, ...(execution.data.known_facts || [])])
+    ).filter((s) => typeof s === 'string' && s.trim().length > 0 && s !== '[object Object]');
 
     const finalContent: DiscoveryContent = {
       ...execution.data,

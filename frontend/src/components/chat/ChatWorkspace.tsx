@@ -271,7 +271,12 @@ export function ChatWorkspace() {
         const isStudentAcademic = !isFoodSnack && /student|exam|coursework|tutor|study/i.test(trimmedText);
         const isFarmer = /farmer|agri|crop|harvest/i.test(trimmedText);
 
-        let inferredAudience = audMatch ? audMatch[1].trim() : '';
+        const beneficiaryMatch = trimmedText.match(/\b(?:to|serving|for|helping|empowering|targeted at)\s+([a-zA-Z\s]{3,45}?(?:clinics?|hospitals?|patients?|doctors?|nurses?|practitioners?|students?|teachers?|users?|consumers?|families?|communities?|shops?|stores?|businesses?|teams?|organizations?|drivers?|workers?|riders?|clients?|customers?|patrons?|professionals?|women|men|parents?|seniors?|children|kids|youth|operators?|founders?|developers?|engineers?|chefs?))\b/i);
+        let inferredAudience = beneficiaryMatch
+          ? beneficiaryMatch[1].trim()
+          : (audMatch && !/^(?:urgent|medical supplies|supplies|products?|items?|goods|parts)$/i.test(audMatch[1].trim()))
+          ? audMatch[1].trim()
+          : '';
         let inferredProblem = '';
         let inferredOpportunity = '';
 
@@ -322,10 +327,11 @@ export function ChatWorkspace() {
           inferredProblem = 'Complex coursework comprehension, study fatigue, and fragmented materials';
           inferredOpportunity = 'Context-aware Socratic learning and syllabus-aligned problem-solving workflows';
         } else {
+          const safeCleaned = cleanedText && !cleanedText.includes('[object Object]') ? cleanedText : 'your venture';
           if (!inferredAudience) {
-            inferredAudience = `Dedicated practitioners and users seeking modernized solutions for ${cleanedText.slice(0, 40)}`;
+            inferredAudience = `Dedicated practitioners and users seeking modernized solutions for ${safeCleaned.slice(0, 40)}`;
           }
-          inferredProblem = `Core operational frictions, fragmented workflows, and legacy compromises in ${cleanedText.slice(0, 40)}`;
+          inferredProblem = `Core operational frictions, fragmented workflows, and legacy compromises in ${safeCleaned.slice(0, 40)}`;
           inferredOpportunity = `Differentiated brand strategy and direct value delivery for ${inferredAudience}`;
         }
 
@@ -628,8 +634,12 @@ export function ChatWorkspace() {
     const cleanedText = trimmed
       .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building|make|create|build|start|launch|develop|design)\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*(?:for|to|that)?\s*/i, '')
       .trim();
+    const beneficiaryMatch = cleanedText.match(/\b(?:to|serving|for|helping|empowering|targeted at)\s+([a-zA-Z\s]{3,45}?(?:clinics?|hospitals?|patients?|doctors?|nurses?|practitioners?|students?|teachers?|users?|consumers?|families?|communities?|shops?|stores?|businesses?|teams?|organizations?|drivers?|workers?|riders?|clients?|customers?|patrons?|professionals?|women|men|parents?|seniors?|children|kids|youth|operators?|founders?|developers?|engineers?|chefs?))\b/i);
     const audMatch = cleanedText.match(/\b(?:for|serving|targeted at|helping|connecting|enabling|empowering|assisting)\s+([a-zA-Z\s]{3,40}?)(?:\s+(?:to\s+[a-z]+|manage|sell|prepare|find|build|scale|grow|automate|book|order|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
-    const inferredAudience = audMatch
+    const safeCleaned = cleanedText && !cleanedText.includes('[object Object]') ? cleanedText : 'your venture';
+    const inferredAudience = beneficiaryMatch
+      ? beneficiaryMatch[1].trim()
+      : (audMatch && !/^(?:urgent|medical supplies|supplies|products?|items?|goods|parts)$/i.test(audMatch[1].trim()))
       ? audMatch[1].trim()
       : /coffee|cafe/i.test(trimmed)
       ? 'Local coffee lovers, daily commuters, and specialty brew enthusiasts'
@@ -639,7 +649,7 @@ export function ChatWorkspace() {
       ? 'Engineering students and academic candidates'
       : /restaurant|reservation/i.test(trimmed)
       ? 'Independent restaurants, dining rooms, and guests'
-      : `Target audience seeking dedicated solutions for ${cleanedText.slice(0, 40)}`;
+      : `Target audience seeking dedicated solutions for ${safeCleaned.slice(0, 40)}`;
 
     const inferredProblem = /coffee|cafe/i.test(trimmed)
       ? 'Generic chain coffees, impersonal ordering experience, and lack of artisanal community spaces'
@@ -649,7 +659,7 @@ export function ChatWorkspace() {
       ? 'Complex coursework comprehension, study fatigue, and fragmented materials'
       : /restaurant|reservation/i.test(trimmed)
       ? 'Table no-shows and high third-party per-cover commissions'
-      : `Core customer frictions and market inefficiency in ${cleanedText.slice(0, 40)}`;
+      : `Core customer frictions and market inefficiency in ${safeCleaned.slice(0, 40)}`;
 
     const inferredOpportunity = `Differentiated brand strategy and direct value delivery for ${inferredAudience}`;
 

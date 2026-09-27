@@ -191,3 +191,33 @@ brandPlanRouter.get('/projects/:id', requireAuth, async (req: AuthenticatedReque
     return res.status(500).json({ error_type: 'database_error', message: msg });
   }
 });
+
+/**
+ * DELETE /api/projects/:id
+ * Deletes a project owned by the authenticated user from Supabase.
+ */
+brandPlanRouter.delete('/projects/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const authHeader = req.headers.authorization;
+  const token =
+    authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7).trim()
+      : undefined;
+  const dbClient = getSupabaseForUser(token);
+
+  try {
+    const { error } = await dbClient
+      .from('projects')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('user_id', req.userId!);
+
+    if (error) {
+      return res.status(500).json({ error_type: 'database_error', message: error.message });
+    }
+
+    return res.status(200).json({ success: true, message: 'Project deleted successfully.' });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return res.status(500).json({ error_type: 'database_error', message: msg });
+  }
+});

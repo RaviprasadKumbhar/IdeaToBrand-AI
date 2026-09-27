@@ -108,9 +108,20 @@ export function assembleBrandKit(
 ### Verified User Facts
 ${
   discovery.known_facts && discovery.known_facts.length > 0
-    ? discovery.known_facts.map((fact) => `- ${fact}`).join("\n")
+    ? discovery.known_facts
+        .map((fact: any) => {
+          if (typeof fact === 'string') return `- ${fact}`;
+          if (fact && typeof fact === 'object') {
+            const txt = fact.text || fact.value || fact.description;
+            if (txt) return fact.label ? `- **${fact.label}:** ${txt}` : `- ${txt}`;
+            return `- ${JSON.stringify(fact)}`;
+          }
+          return `- ${String(fact)}`;
+        })
+        .filter((line) => !line.includes('[object Object]'))
+        .join("\n")
     : Object.keys(ctx.user_facts).length > 0
-    ? Object.entries(ctx.user_facts).map(([k, v]) => `- **${k}:** ${JSON.stringify(v)}`).join("\n")
+    ? Object.entries(ctx.user_facts).map(([k, v]) => `- **${k}:** ${typeof v === 'string' ? v : JSON.stringify(v)}`).join("\n")
     : "- No static user facts recorded."
 }
 `);
