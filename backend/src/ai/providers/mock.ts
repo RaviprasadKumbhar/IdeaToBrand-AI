@@ -65,12 +65,23 @@ function extractContextFromPrompt(prompt: string) {
     facts.push(...lines);
   }
 
-  // Check for audience in concept or prompt
-  const audMatch = concept.match(/\b(?:for|to)\s+([a-zA-Z\s]{3,45}?)(?:\b(?:in|who|that|seeking|looking|preparing|struggling|facing|to)\b|[.,;]|$)/i);
-  if (audMatch && audMatch[1]) {
-    const candidate = audMatch[1].trim();
-    if (!/^(?:my brand|myself|us|start|build)$/i.test(candidate)) {
+  // Check for audience in concept or prompt (prioritize human beneficiaries from verb phrases)
+  const helpingAudMatch = concept.match(/\b(?:helping|enabling|empowering|connecting|targeted at|assisting)\s+([a-zA-Z\s]{3,45}?)(?:\s+(?:to\s+[a-z]+|sell|prepare|manage|find|build|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
+  if (helpingAudMatch && helpingAudMatch[1]) {
+    const candidate = helpingAudMatch[1].trim();
+    if (!/^(?:my brand|myself|us|start|build|them|everyone|people)$/i.test(candidate)) {
       audience = candidate;
+    }
+  }
+
+  if (!audience) {
+    const audMatch = concept.match(/\b(?:for|to)\s+([a-zA-Z\s]{3,45}?)(?:\b(?:in|who|that|seeking|looking|preparing|struggling|facing|to)\b|[.,;]|$)/i);
+    if (audMatch && audMatch[1]) {
+      const candidate = audMatch[1].trim();
+      // Filter out non-audience targets like exams, interviews, tests, appointments
+      if (!/^(?:my brand|myself|us|start|build|exams?|university exams?|tests?|interviews?)$/i.test(candidate)) {
+        audience = candidate;
+      }
     }
   }
 
