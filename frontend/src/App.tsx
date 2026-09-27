@@ -69,6 +69,7 @@ export default function App() {
           />
           <Route path="/chat" element={<Navigate to="/workspace" replace />} />
           <Route path="/app" element={<Navigate to="/workspace" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/workspace" replace />} />
 
           {/* Deep-Dive Stage Views (Preserved with AppShell) */}
           <Route

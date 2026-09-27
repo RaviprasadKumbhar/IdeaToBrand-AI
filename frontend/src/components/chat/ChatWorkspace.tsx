@@ -264,29 +264,70 @@ export function ChatWorkspace() {
           .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building|make|create|build|start|launch|develop|design)\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*(?:for|to|that)?\s*/i, '')
           .trim();
         const audMatch = cleanedText.match(/\b(?:for|serving|targeted at|helping|connecting|enabling|empowering|assisting)\s+([a-zA-Z\s]{3,40}?)(?:\s+(?:to\s+[a-z]+|manage|sell|prepare|find|build|scale|grow|automate|book|order|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
-        const inferredAudience = audMatch
-          ? audMatch[1].trim()
-          : /coffee|cafe/i.test(trimmedText)
-          ? 'Local coffee lovers, daily commuters, and specialty brew enthusiasts'
-          : /farmer|agri/i.test(trimmedText)
-          ? 'Small independent farmers and local households'
-          : /student|exam/i.test(trimmedText)
-          ? 'Engineering students and academic candidates'
-          : /restaurant|reservation/i.test(trimmedText)
-          ? 'Independent restaurants, dining rooms, and guests'
-          : `Target audience seeking dedicated solutions for ${cleanedText.slice(0, 40)}`;
+        const isFoodSnack = /snack|protein|food|nutrition|beverage|munch|namkeen/i.test(trimmedText);
+        const isJewelry = /jewel|gem|ring|necklace|bracelet|handmade|artisan/i.test(trimmedText);
+        const isWasteSaaS = /waste|spoilage|inventory/i.test(trimmedText) && /restaurant|kitchen|food/i.test(trimmedText);
+        const isRestaurantGeneral = !isWasteSaaS && /restaurant|dining|bistro|cafe|reservation/i.test(trimmedText);
+        const isStudentAcademic = !isFoodSnack && /student|exam|coursework|tutor|study/i.test(trimmedText);
+        const isFarmer = /farmer|agri|crop|harvest/i.test(trimmedText);
 
-        const inferredProblem = /coffee|cafe/i.test(trimmedText)
-          ? 'Generic chain coffees, impersonal ordering experience, and lack of artisanal community spaces'
-          : /farmer|agri/i.test(trimmedText)
-          ? 'Intermediary middlemen fees and lack of direct consumer access'
-          : /student|exam/i.test(trimmedText)
-          ? 'Complex coursework comprehension, study fatigue, and fragmented materials'
-          : /restaurant|reservation/i.test(trimmedText)
-          ? 'Table no-shows and high third-party per-cover commissions'
-          : `Core customer frictions and market inefficiency in ${cleanedText.slice(0, 40)}`;
+        let inferredAudience = audMatch ? audMatch[1].trim() : '';
+        let inferredProblem = '';
+        let inferredOpportunity = '';
 
-        const inferredOpportunity = `Differentiated brand strategy and direct value delivery for ${inferredAudience}`;
+        if (isFoodSnack) {
+          if (!inferredAudience) {
+            inferredAudience = /student|college|campus/i.test(trimmedText)
+              ? 'College students and active young adults seeking clean, affordable snacking'
+              : 'Conscious consumers seeking nutritious, convenient snacking';
+          }
+          inferredProblem = /student|college|india/i.test(trimmedText)
+            ? 'Campus canteens rely on oily, processed junk food while commercial protein snacks are priced as luxury items out of student allowances'
+            : 'Overpriced, heavily processed snacks loaded with artificial additives and inadequate clean protein';
+          inferredOpportunity = /student|college|india/i.test(trimmedText)
+            ? 'Pocket-friendly, protein-rich roasted snacks delivering 10g+ clean vegetarian nutrition under ₹40 per pack'
+            : 'High-protein, clean-label snacking with uncompromising flavor and accessible daily pricing';
+        } else if (isJewelry) {
+          if (!inferredAudience) {
+            inferredAudience = /women|work/i.test(trimmedText)
+              ? 'Corporate professionals, female leaders, and working women'
+              : 'Discerning consumers seeking timeless handcrafted accessories';
+          }
+          inferredProblem = /women|work/i.test(trimmedText)
+            ? 'Fast-fashion jewelry tarnishes quickly and irritates skin, while fine luxury jewelry is prohibitively expensive and impractical for daily 9-to-5 wear'
+            : 'Mass-produced jewelry lacks authentic artisan craftsmanship, durability, and skin-safe comfort';
+          inferredOpportunity = 'Handcrafted, tarnish-resistant demi-fine essentials engineered for effortless boardroom-to-evening versatility';
+        } else if (isWasteSaaS) {
+          if (!inferredAudience) {
+            inferredAudience = 'Independent restaurant owners, head chefs, and kitchen operators';
+          }
+          inferredProblem = 'Razor-thin 3–5% margins eroded by 8–14% of food inventory lost to kitchen over-prep, spoilage, and unpredictable demand';
+          inferredOpportunity = 'Automated POS-connected daily prep forecasting that cuts kitchen food waste by 30% and saves $1,200+/month';
+        } else if (isRestaurantGeneral) {
+          if (!inferredAudience) {
+            inferredAudience = 'Independent restaurant owners and neighborhood diners';
+          }
+          inferredProblem = 'Predatory third-party per-cover commissions and high table no-show rates';
+          inferredOpportunity = 'Commission-free direct reservations, automated guest reminders, and private customer CRM';
+        } else if (isFarmer) {
+          if (!inferredAudience) {
+            inferredAudience = 'Independent smallholder farmers and local households';
+          }
+          inferredProblem = 'Intermediary middlemen fees and lack of direct, transparent farm-to-consumer distribution';
+          inferredOpportunity = 'Guaranteed 24-hour harvest-to-doorstep logistics empowering local growers with fair pricing';
+        } else if (isStudentAcademic) {
+          if (!inferredAudience) {
+            inferredAudience = 'Engineering students and academic candidates';
+          }
+          inferredProblem = 'Complex coursework comprehension, study fatigue, and fragmented materials';
+          inferredOpportunity = 'Context-aware Socratic learning and syllabus-aligned problem-solving workflows';
+        } else {
+          if (!inferredAudience) {
+            inferredAudience = `Dedicated practitioners and users seeking modernized solutions for ${cleanedText.slice(0, 40)}`;
+          }
+          inferredProblem = `Core operational frictions, fragmented workflows, and legacy compromises in ${cleanedText.slice(0, 40)}`;
+          inferredOpportunity = `Differentiated brand strategy and direct value delivery for ${inferredAudience}`;
+        }
 
         const assistantMsg: ChatMessage = {
           id: nextId('assistant'),
