@@ -109,12 +109,22 @@ export class ScenarioProbeService {
 
     const comparisons: ScenarioComparisonItem[] = [];
 
+    // The original raw idea (user_facts.business_description or equivalent) is the base concept.
+    // The what-if scenario is delivered through scenario_override.what_if_input, NOT raw_input.
+    // raw_input must always reflect the founder's original idea so downstream prompts stay grounded.
+    const originalRawInput: string =
+      (typeof ctx.user_facts?.business_description === 'string' && ctx.user_facts.business_description.trim())
+        ? ctx.user_facts.business_description.trim()
+        : (typeof ctx.user_facts?.idea_text === 'string' && ctx.user_facts.idea_text.trim())
+          ? ctx.user_facts.idea_text.trim()
+          : whatIfInput; // fallback only if user_facts has no original idea
+
     // Run Strategist and Critic ONLY for affected fields in dependency order
     for (const stage of affectedStages) {
       const stageInput: StageInput = {
         approved_decisions: branchDecisions,
         scenario_override: scenarioOverride,
-        raw_input: whatIfInput,
+        raw_input: originalRawInput,
       };
 
       // 1. Run Strategist with scenario_override
