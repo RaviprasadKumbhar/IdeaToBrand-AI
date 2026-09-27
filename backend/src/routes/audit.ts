@@ -65,7 +65,11 @@ auditRouter.post('/audit/resolve', (req: Request, res: Response) => {
       action,
       resolution
     );
-    return res.status(200).json(result);
+    return res.status(200).json({
+      ...result,
+      context: result.updatedContext,
+      findings: result.updatedFindings,
+    });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return res.status(422).json({

@@ -33,6 +33,24 @@ app.use("/api", scenarioProbeRouter);
 app.use("/api", stagesRouter);
 app.use("/api", interviewRouter);
 
+// 404 handler for unmapped routes
+app.use((req, res) => {
+  res.status(404).json({
+    error_type: "not_found",
+    message: `Cannot ${req.method} ${req.path}`,
+  });
+});
+
+// Global error handler
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const status = err.status || err.statusCode || (err instanceof SyntaxError && "body" in err ? 400 : 500);
+  const message = err.message || "Internal server error";
+  res.status(status).json({
+    error_type: err.error_type || (status === 400 ? "bad_request" : "internal_server_error"),
+    message,
+  });
+});
+
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
     console.log(`FOIL Backend API running on port ${PORT}`);
