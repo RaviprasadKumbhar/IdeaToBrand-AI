@@ -8,21 +8,22 @@
 import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { StageName, ApprovalState, CriticFinding, StageErrorResponse } from '../../../shared/types';
+import { useFOILStore } from '../store/foilStore';
 import { CriticFindingCard } from './CriticFindingCard';
 import { ApprovalBar } from './ApprovalBar';
 import { LoadingState } from './LoadingState';
 import { ErrorState } from './ErrorState';
 import { NeedsReviewBanner } from './NeedsReviewBanner';
 
-const NEXT_STAGE_MAP: Record<StageName, { label: string; route: string } | null> = {
-  discovery:          { label: 'Positioning Matrix', route: '/positioning' },
-  positioning:        { label: 'Naming + Personality', route: '/naming-personality' },
-  naming_personality: { label: 'Tagline + Pitch', route: '/tagline-pitch' },
-  tagline_pitch:      { label: 'Visual Brief', route: '/visual-brief' },
-  visual_brief:       { label: 'Voice + Messaging', route: '/voice-messaging' },
-  voice_messaging:    { label: 'Launch Preparation', route: '/launch-prep' },
-  launch_prep:        { label: 'Consistency Audit', route: '/consistency-audit' },
-  consistency_audit:  { label: 'Brand Kit & Export', route: '/export' },
+const NEXT_STAGE_MAP: Record<StageName, { label: string; route: string; stage: StageName } | null> = {
+  discovery:          { label: 'Positioning Matrix', route: '/positioning', stage: 'positioning' },
+  positioning:        { label: 'Naming + Personality', route: '/naming-personality', stage: 'naming_personality' },
+  naming_personality: { label: 'Tagline + Pitch', route: '/tagline-pitch', stage: 'tagline_pitch' },
+  tagline_pitch:      { label: 'Visual Brief', route: '/visual-brief', stage: 'visual_brief' },
+  visual_brief:       { label: 'Voice + Messaging', route: '/voice-messaging', stage: 'voice_messaging' },
+  voice_messaging:    { label: 'Launch Preparation', route: '/launch-prep', stage: 'launch_prep' },
+  launch_prep:        { label: 'Consistency Audit', route: '/consistency-audit', stage: 'consistency_audit' },
+  consistency_audit:  { label: 'Brand Kit & Export', route: '/export', stage: 'kit_export' },
   kit_export:         null,
 };
 
@@ -100,6 +101,7 @@ export function StageScreen({
   approveDisabled = false,
 }: StageScreenProps) {
   const navigate = useNavigate();
+  const store = useFOILStore();
   const nextStage = NEXT_STAGE_MAP[stage];
   const pendingFindings = findings.filter((f) => f.user_action === null);
   const hasBlockingFindings = pendingFindings.length > 0;
@@ -224,7 +226,12 @@ export function StageScreen({
               {nextStage && (
                 <button
                   id={`btn-next-stage-${stage}`}
-                  onClick={() => navigate(nextStage.route)}
+                  onClick={() => {
+                    if (nextStage?.stage) {
+                      store.setCurrentStage?.(nextStage.stage);
+                    }
+                    navigate(nextStage.route);
+                  }}
                   className="btn-primary text-xs px-4 py-2 font-semibold shadow-xs flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
                 >
                   <span>Proceed to Stage {stageNumber + 1}: {nextStage.label}</span>

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFOILStore } from '../../store/foilStore';
 import { StageScreen } from '../../components/StageScreen';
@@ -14,6 +15,11 @@ export interface LaunchPrepContent {
 export function LaunchPrepStage() {
   const navigate = useNavigate();
   const store = useFOILStore();
+
+  useEffect(() => {
+    store.setCurrentStage?.('launch_prep');
+  }, []);
+
   const ui = store.uiStates['launch_prep'];
   const draft = store.ctx.stage_drafts['launch_prep'];
   const approved = store.ctx.approved_decisions['launch_prep'];

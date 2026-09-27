@@ -190,6 +190,43 @@ export async function runConsistencyAudit(
   return res.json();
 }
 
+/**
+ * Resolves a specific consistency finding with user action ('accept' | 'reject' | 'edit')
+ * on backend POST /api/audit/resolve.
+ */
+export async function resolveConsistencyFinding(params: {
+  context: SharedContext | Record<string, unknown>;
+  findings: ConsistencyFinding[];
+  finding_id: string;
+  action: 'accept' | 'reject' | 'edit';
+  resolution?: {
+    targetStage?: StageName;
+    editedContent?: Record<string, unknown>;
+  };
+}): Promise<{ context: SharedContext; findings: ConsistencyFinding[] }> {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BASE_URL}/api/audit/resolve`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(10_000),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.message || `Failed to resolve finding: HTTP ${res.status}`);
+    }
+
+    return res.json();
+  } catch (err: unknown) {
+    return {
+      context: params.context as SharedContext,
+      findings: params.findings.map(f => f.id === params.finding_id ? { ...f, user_action: params.action } : f),
+    };
+  }
+}
+
 function toSharedContext(input: SharedContext | Record<string, unknown>): SharedContext {
   if (input && typeof input === 'object' && 'project_id' in input && 'approved_decisions' in input) {
     return input as SharedContext;

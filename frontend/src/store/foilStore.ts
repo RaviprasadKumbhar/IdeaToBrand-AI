@@ -62,6 +62,9 @@ function createInitialUIStates(ctx?: SharedContext | null): Record<StageName, St
       let state: ApprovalState = 'draft';
       if (decision) {
         state = decision.state === 'needs_review' ? 'needs_review' : 'approved';
+      } else if (ctx?.stage_drafts?.[s]) {
+        const hasFindings = ctx.critic_findings?.some(f => f.stage === s && f.user_action === null);
+        state = hasFindings ? 'needs_revision' : 'critic_review';
       }
       return [s, { approval_state: state, is_loading: false, error: null }];
     })
@@ -137,7 +140,7 @@ export interface FOILStore {
 
   // Consistency findings
   setConsistencyFindings: (findings: ConsistencyFinding[]) => void;
-  actOnConsistencyFinding: (id: string, action: ConsistencyFinding['user_action']) => void;
+  actOnConsistencyFinding: (id: string, action: ConsistencyFinding['user_action'], customResolution?: string) => void;
 
   // Scenario overrides (T-030)
   addScenarioOverride: (override: import('../../../shared/types').ScenarioOverride) => void;
@@ -398,22 +401,27 @@ export const useFOILStore = create<FOILStore>((set, get) => {
       triggerAutosave(get);
     },
 
-    actOnConsistencyFinding: (id, action) => {
+    actOnConsistencyFinding: (id, action, customResolution) => {
       const finding = get().ctx.consistency_findings.find((f) => f.id === id);
-      if (finding && action === 'accept') {
-        const targetStage = finding.fields_in_conflict[0]?.split('.')[0] as StageName;
+      if (finding && (action === 'accept' || (action === 'edit' && customResolution))) {
+        const targetStage = (finding.fields_in_conflict[0]?.split('.')[0] as StageName) || 'positioning';
         const currentApproved = get().ctx.approved_decisions[targetStage];
         if (targetStage && currentApproved?.content) {
-          const fieldName = finding.fields_in_conflict[0]?.split('.')[1] || 'resolution';
+          const rawFieldName = finding.fields_in_conflict[0]?.split('.')[1];
+          const fieldName = rawFieldName && (rawFieldName in (currentApproved.content as Record<string, unknown>))
+            ? rawFieldName
+            : Object.keys(currentApproved.content)[0] || 'resolution';
+
+          const replacement = (action === 'edit' && customResolution) ? customResolution : finding.sharper_alternative;
           const existingFieldValue = (currentApproved.content as Record<string, unknown>)[fieldName];
           const newFieldValue = Array.isArray(existingFieldValue)
-            ? [finding.sharper_alternative, ...existingFieldValue.slice(1)]
-            : finding.sharper_alternative;
+            ? [replacement, ...existingFieldValue.slice(1)]
+            : replacement;
 
           const updatedStageContent = {
             ...currentApproved.content,
             [fieldName]: newFieldValue,
-            audit_resolved_alternative: finding.sharper_alternative,
+            audit_resolved_alternative: replacement,
           };
 
           get().writeApprovedDecision(

@@ -187,6 +187,16 @@ export function ScenarioProbePage() {
     setKept(true);
   }
 
+  function handleEditProbe() {
+    setPhase('input');
+    setResult(null);
+    // Keep whatIfInput so user can refine their what-if prompt!
+    setAccepted(false);
+    setKept(false);
+    setErrorMsg(null);
+    setBranchFindings([]);
+  }
+
   function handleNewProbe() {
     setPhase('input');
     setResult(null);
@@ -312,6 +322,32 @@ export function ScenarioProbePage() {
             </div>
           </div>
 
+          {/* ─── Original vs Scenario Comparison Card (PRD § 20) ─── */}
+          <div className="card p-5 bg-surface-50 border border-border space-y-3">
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <span className="section-label text-ink-950 font-bold uppercase tracking-wider">
+                Scenario Comparison Overview
+              </span>
+              <span className="text-xs text-ink-500 font-medium">
+                Original vs Scenario Branch
+              </span>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4 text-xs">
+              <div className="p-3 bg-white border border-border rounded-md shadow-2xs">
+                <span className="section-label block mb-1 text-ink-500">Original Strategy Baseline</span>
+                <p className="text-sm font-semibold text-ink-950">
+                  {String(store.ctx.user_facts?.business_description || 'Active Approved Brand Strategy')}
+                </p>
+              </div>
+              <div className="p-3 bg-accent-50 border border-accent-200 rounded-md shadow-2xs">
+                <span className="section-label block mb-1 text-accent-700">What-If Branch Probe</span>
+                <p className="text-sm font-semibold text-accent-950">
+                  "{result.what_if_input}"
+                </p>
+              </div>
+            </div>
+          </div>
+
           {isDecided && (
             <div
               className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-md border ${accepted ? 'bg-green-50 border-green-200' : 'bg-surface-100 border-border'}`}
@@ -423,7 +459,7 @@ export function ScenarioProbePage() {
                 </button>
                 <button
                   id="btn-edit-probe"
-                  onClick={handleNewProbe}
+                  onClick={handleEditProbe}
                   className="btn-secondary"
                   aria-label="Edit scenario — go back and modify the what-if input"
                 >

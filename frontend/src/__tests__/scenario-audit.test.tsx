@@ -8,6 +8,7 @@ import { useFOILStore } from '../store/foilStore';
 vi.mock('../lib/api-client', () => ({
   runScenarioProbe: vi.fn(),
   runConsistencyAudit: vi.fn(),
+  resolveConsistencyFinding: vi.fn().mockResolvedValue({ context: {}, findings: [] }),
 }));
 
 import * as apiClient from '../lib/api-client';
