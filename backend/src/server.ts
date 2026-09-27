@@ -7,8 +7,12 @@ import { stagesRouter } from "./routes/stages.js";
 import { scenarioProbeRouter } from "./routes/scenarioProbe.js";
 import { auditRouter } from "./routes/audit.js";
 import { interviewRouter } from "./routes/interview.js";
+import { brandPlanRouter } from "./routes/brandPlan.js";
+
+import path from "path";
 
 dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 
 const envResult = validateEnvironment(process.env);
 if (!envResult.valid) {
@@ -32,6 +36,7 @@ app.use("/api", auditRouter);
 app.use("/api", scenarioProbeRouter);
 app.use("/api", stagesRouter);
 app.use("/api", interviewRouter);
+app.use("/api", brandPlanRouter);
 
 // 404 handler for unmapped routes
 app.use((req, res) => {

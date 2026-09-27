@@ -12,12 +12,28 @@ import type {
   SharedContext,
 } from '../../../shared/types';
 import { v4 as uuid } from 'uuid';
+import { getCurrentSession } from './supabase';
 
 // Base URL — set VITE_API_BASE_URL or VITE_API_URL in .env for real backend
 const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
   'http://localhost:5000';
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  try {
+    const session = await getCurrentSession();
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+  } catch {
+    // Session token retrieval error fallback
+  }
+  return headers;
+}
 
 export interface GenerateResult {
   content: Record<string, unknown>;
@@ -78,9 +94,10 @@ export async function generateStage(
   context: Record<string, unknown>
 ): Promise<GenerateResult> {
   try {
+    const headers = await getAuthHeaders();
     const res = await fetch(`${BASE_URL}/api/stages/${stage}/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(context),
       signal: AbortSignal.timeout(30_000),
     });
@@ -126,9 +143,10 @@ export async function sendInterviewTurn(params: {
   attachments?: Array<{ name: string; content?: string }>;
   shared_context?: Partial<SharedContext>;
 }): Promise<InterviewResponse> {
+  const headers = await getAuthHeaders();
   const res = await fetch(`${BASE_URL}/api/interview/turn`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(params),
     signal: AbortSignal.timeout(30_000),
   });
@@ -153,9 +171,10 @@ export async function runConsistencyAudit(
 
   let res: Response;
   try {
+    const headers = await getAuthHeaders();
     res = await fetch(`${BASE_URL}/api/audit/holistic`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(30_000),
     });
@@ -204,9 +223,10 @@ export async function assembleExport(
 
   let res: Response;
   try {
+    const headers = await getAuthHeaders();
     res = await fetch(`${BASE_URL}/api/export`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ context, consistency_findings: findings }),
       signal: AbortSignal.timeout(30_000),
     });
@@ -237,9 +257,10 @@ export async function runScenarioProbe(
   const context = toSharedContext(contextOrApproved);
   let res: Response;
   try {
+    const headers = await getAuthHeaders();
     res = await fetch(`${BASE_URL}/api/scenario-probe/run`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         context,
         triggered_from_stage: triggeredFrom,
@@ -292,3 +313,43 @@ export async function runScenarioProbe(
 
 /** Real API client alias */
 export const realGenerateStage = generateStage;
+
+/**
+ * End-to-end Brand Plan generation API client — routes to POST /api/brand-plan
+ */
+export async function generateCompleteBrandPlan(
+  idea: string,
+  options?: {
+    projectName?: string;
+    constraints?: string[];
+    userFacts?: string[];
+  }
+): Promise<{
+  status: string;
+  project_id: string;
+  brand_plan: Record<string, unknown>;
+  approved_decisions: Record<string, unknown>;
+  markdown_plan: string;
+  supabase_saved?: boolean;
+}> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${BASE_URL}/api/brand-plan`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      idea,
+      project_name: options?.projectName,
+      constraints: options?.constraints,
+      user_facts: options?.userFacts,
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Brand plan generation failed: HTTP ${res.status}`);
+  }
+
+  return res.json();
+}
+

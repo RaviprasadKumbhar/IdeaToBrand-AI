@@ -1,5 +1,6 @@
 import { Request, Response, Router } from "express";
 import type { StageName, SharedContext } from "@foil/shared";
+import { assembleBrandKit, validateExportEligibility } from "@foil/shared";
 import { getAIProvider } from "../ai/factory.js";
 import { DiscoveryStageService } from "../stages/discovery.js";
 import { PositioningStageService } from "../stages/positioning.js";
@@ -8,6 +9,7 @@ import { TaglinePitchStageService } from "../stages/taglinePitch.js";
 import { VisualBriefStageService } from "../stages/visualBrief.js";
 import { VoiceMessagingStageService } from "../stages/voiceMessaging.js";
 import { LaunchPrepStageService } from "../stages/launchPrep.js";
+import { ConsistencyAuditService } from "../stages/consistencyAudit.js";
 import { CriticEngine } from "../critic/index.js";
 
 export const stagesRouter = Router();
@@ -19,6 +21,7 @@ const taglineService = new TaglinePitchStageService();
 const visualService = new VisualBriefStageService();
 const voiceService = new VoiceMessagingStageService();
 const launchService = new LaunchPrepStageService();
+const auditService = new ConsistencyAuditService();
 const criticEngine = new CriticEngine();
 
 /**
@@ -163,6 +166,30 @@ stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response)
         return res.status(200).json({
           content: result.content,
           findings: result.findings,
+        });
+      }
+
+      case "consistency_audit": {
+        const findings = await auditService.runAudit(approvedDecisions, provider);
+        return res.status(200).json({
+          content: { findings },
+          findings,
+        });
+      }
+
+      case "kit_export": {
+        const gateResult = validateExportEligibility(context, payload.consistency_findings || context.consistency_findings || []);
+        if (!gateResult.eligible) {
+          return res.status(422).json({
+            error_type: "export_gated",
+            message: gateResult.failure_reason,
+            missing_stage: gateResult.missing_stage,
+          });
+        }
+        const bundle = assembleBrandKit(context, payload.consistency_findings || context.consistency_findings || []);
+        return res.status(200).json({
+          content: bundle,
+          findings: [],
         });
       }
 

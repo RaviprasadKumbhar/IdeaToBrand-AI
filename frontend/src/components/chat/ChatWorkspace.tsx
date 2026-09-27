@@ -8,7 +8,7 @@ import { useState, useRef, useEffect, type KeyboardEvent, type ChangeEvent, type
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useFOILStore } from '../../store/foilStore';
-import { generateStage, sendInterviewTurn } from '../../lib/api-client';
+import { generateStage, sendInterviewTurn, runConsistencyAudit, assembleExport } from '../../lib/api-client';
 import { saveWorkspaceProject, loadWorkspaceProject } from '../../lib/supabase-workspace';
 import { DiscoveryReviewCard } from './DiscoveryReviewCard';
 import type { StageName, CriticFinding, FactItem, InterviewQuestion, DiscoveryContent } from '../../../../shared/types';
@@ -121,6 +121,8 @@ export function ChatWorkspace() {
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const [isEditingIdea, setIsEditingIdea] = useState(false);
+  const [editIdeaText, setEditIdeaText] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -238,8 +240,15 @@ export function ChatWorkspace() {
 
     try {
       const trimmedText = textToSend.trim();
-      const isNewConceptPhrase = /^(?:i want to|we want to|my idea is to|my idea is|we are building|i am building|a marketplace|marketplace for|software for|platform for|an ai tutor|ai tutor|an app for|building a)/i.test(trimmedText);
-      const isInitialConcept = !ctx.user_facts.business_description || isNewConceptPhrase;
+      const existingDesc = String(ctx.user_facts.business_description || '').trim();
+      const isPlaceholderIdea = !existingDesc || 
+        existingDesc.length < 5 || 
+        /^(?:hi|hii|hello|hey|test|temp|brand|idea)$/i.test(existingDesc);
+
+      const isNewConceptPhrase = /^(?:i want to|we want to|my idea is to|my idea is|we are building|i am building|a marketplace|marketplace for|software for|platform for|an ai tutor|ai tutor|an app for|building a|make\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*for|create\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*for|build\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*for|design\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*for|start\s+(?:a|an)?\s*(?:business|company|shop|store|brand|service)?\s*for|website\s+for|webside\s+for|app\s+for|change\s+(?:the\s+|my\s+)?idea|new\s+idea)/i.test(trimmedText);
+      const isEndStage = currentWorkingStage === 'consistency_audit' || currentWorkingStage === 'kit_export';
+      const hasBusinessKeywords = /\b(?:coffee shop|coffee|restaurant|cafe|bakery|marketplace|tutor|gym|fitness|clinic|hotel|salon|store|boutique|delivery|agency|platform|service|ecommerce|e-commerce|shop)\b/i.test(trimmedText);
+      const isInitialConcept = isPlaceholderIdea || isNewConceptPhrase || (isEndStage && hasBusinessKeywords);
 
       const currentFacts = {
         ...ctx.user_facts,
@@ -252,11 +261,13 @@ export function ChatWorkspace() {
 
         // Derive grounded acknowledgment based on user input
         const cleanedText = trimmedText
-          .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building)\s+(?:build|create|launch|start|develop|make|offer|sell|provide|design)?\s*/i, '')
+          .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building|make|create|build|start|launch|develop|design)\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*(?:for|to|that)?\s*/i, '')
           .trim();
         const audMatch = cleanedText.match(/\b(?:for|serving|targeted at|helping|connecting|enabling|empowering|assisting)\s+([a-zA-Z\s]{3,40}?)(?:\s+(?:to\s+[a-z]+|manage|sell|prepare|find|build|scale|grow|automate|book|order|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
         const inferredAudience = audMatch
           ? audMatch[1].trim()
+          : /coffee|cafe/i.test(trimmedText)
+          ? 'Local coffee lovers, daily commuters, and specialty brew enthusiasts'
           : /farmer|agri/i.test(trimmedText)
           ? 'Small independent farmers and local households'
           : /student|exam/i.test(trimmedText)
@@ -265,7 +276,9 @@ export function ChatWorkspace() {
           ? 'Independent restaurants, dining rooms, and guests'
           : `Target audience seeking dedicated solutions for ${cleanedText.slice(0, 40)}`;
 
-        const inferredProblem = /farmer|agri/i.test(trimmedText)
+        const inferredProblem = /coffee|cafe/i.test(trimmedText)
+          ? 'Generic chain coffees, impersonal ordering experience, and lack of artisanal community spaces'
+          : /farmer|agri/i.test(trimmedText)
           ? 'Intermediary middlemen fees and lack of direct consumer access'
           : /student|exam/i.test(trimmedText)
           ? 'Complex coursework comprehension, study fatigue, and fragmented materials'
@@ -289,7 +302,11 @@ export function ChatWorkspace() {
           showDiscoveryCTA: true,
         };
 
-        setMessages((prev) => [...prev, assistantMsg]);
+        if (isPlaceholderIdea || isEndStage) {
+          setMessages([userMessage, assistantMsg]);
+        } else {
+          setMessages((prev) => [...prev, assistantMsg]);
+        }
         return;
       }
 
@@ -338,8 +355,38 @@ export function ChatWorkspace() {
           };
           setMessages((prev) => [...prev, assistantMsg]);
         }
+      } else if (targetStage === 'consistency_audit') {
+        const auditRes = await runConsistencyAudit(ctx.approved_decisions);
+        const assistantMsg: ChatMessage = {
+          id: nextId('assistant'),
+          sender: 'assistant',
+          text: `I've performed a Holistic Consistency Audit across your complete brand system. ${
+            auditRes.findings.length > 0
+              ? `Found ${auditRes.findings.length} item(s) to review for consistency.`
+              : 'Everything looks remarkably consistent across your name, tagline, voice, visuals, and launch messaging!'
+          }`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          stageRelated: 'consistency_audit',
+          findings: auditRes.findings as unknown as CriticFinding[],
+          isApproved: auditRes.findings.every((f) => f.user_action !== null),
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+      } else if (targetStage === 'kit_export') {
+        const exportRes = await assembleExport(ctx, ctx.consistency_findings);
+        const assistantMsg: ChatMessage = {
+          id: nextId('assistant'),
+          sender: 'assistant',
+          text: exportRes.status === 'exported'
+            ? 'Your complete Brand Kit is assembled and ready for export!'
+            : 'Export is currently gated. Please ensure all 7 stages are approved and consistency findings resolved.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          stageRelated: 'kit_export',
+          stageContent: exportRes as unknown as Record<string, unknown>,
+          isApproved: exportRes.status === 'exported',
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
       } else {
-        // Subsequent stages (positioning, naming, tagline, visual, voice, launch, audit, export) or direct stage generation
+        // Subsequent stages (positioning, naming, tagline, visual, voice, launch) or direct stage generation
         const res = await generateStage(targetStage, {
           user_message: textToSend,
           idea_text: currentFacts.business_description,
@@ -514,6 +561,74 @@ export function ChatWorkspace() {
     navigate('/');
   }
 
+  function handleOpenEditIdea() {
+    setEditIdeaText(String(ctx.user_facts.business_description || ''));
+    setIsEditingIdea(true);
+  }
+
+  async function handleSaveEditedIdea() {
+    const trimmed = editIdeaText.trim();
+    if (!trimmed) return;
+    setIsEditingIdea(false);
+
+    const currentFacts = {
+      ...ctx.user_facts,
+      business_description: trimmed,
+    };
+    await startNewProject(currentFacts);
+
+    const userMsg: ChatMessage = {
+      id: nextId('user'),
+      sender: 'user',
+      text: trimmed,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    const cleanedText = trimmed
+      .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building|make|create|build|start|launch|develop|design)\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*(?:for|to|that)?\s*/i, '')
+      .trim();
+    const audMatch = cleanedText.match(/\b(?:for|serving|targeted at|helping|connecting|enabling|empowering|assisting)\s+([a-zA-Z\s]{3,40}?)(?:\s+(?:to\s+[a-z]+|manage|sell|prepare|find|build|scale|grow|automate|book|order|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
+    const inferredAudience = audMatch
+      ? audMatch[1].trim()
+      : /coffee|cafe/i.test(trimmed)
+      ? 'Local coffee lovers, daily commuters, and specialty brew enthusiasts'
+      : /farmer|agri/i.test(trimmed)
+      ? 'Small independent farmers and local households'
+      : /student|exam/i.test(trimmed)
+      ? 'Engineering students and academic candidates'
+      : /restaurant|reservation/i.test(trimmed)
+      ? 'Independent restaurants, dining rooms, and guests'
+      : `Target audience seeking dedicated solutions for ${cleanedText.slice(0, 40)}`;
+
+    const inferredProblem = /coffee|cafe/i.test(trimmed)
+      ? 'Generic chain coffees, impersonal ordering experience, and lack of artisanal community spaces'
+      : /farmer|agri/i.test(trimmed)
+      ? 'Intermediary middlemen fees and lack of direct consumer access'
+      : /student|exam/i.test(trimmed)
+      ? 'Complex coursework comprehension, study fatigue, and fragmented materials'
+      : /restaurant|reservation/i.test(trimmed)
+      ? 'Table no-shows and high third-party per-cover commissions'
+      : `Core customer frictions and market inefficiency in ${cleanedText.slice(0, 40)}`;
+
+    const inferredOpportunity = `Differentiated brand strategy and direct value delivery for ${inferredAudience}`;
+
+    const assistantMsg: ChatMessage = {
+      id: nextId('assistant'),
+      sender: 'assistant',
+      text: "Got it. I've updated your brand idea and foundation.",
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      ideaAcknowledgment: {
+        idea: trimmed,
+        audience: inferredAudience,
+        problem: inferredProblem,
+        opportunity: inferredOpportunity,
+      },
+      showDiscoveryCTA: true,
+    };
+
+    setMessages([userMsg, assistantMsg]);
+  }
+
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col bg-paper-50 selection:bg-accent-100 selection:text-accent-700">
       {/* ─── Top Header ─────────────────────────────────────────────────── */}
@@ -547,14 +662,19 @@ export function ChatWorkspace() {
           {/* Current Idea & Status */}
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-[11px] font-medium text-ink-400 hidden sm:inline flex-shrink-0">Current idea:</span>
-            <span
-              className="text-xs px-2.5 py-1 rounded-full bg-surface-100 border border-border text-ink-800 font-semibold truncate max-w-[180px] lg:max-w-[280px]"
-              title={String(ctx.user_facts.business_description || 'New Brand Project')}
+            <button
+              type="button"
+              onClick={handleOpenEditIdea}
+              className="text-xs px-2.5 py-1 rounded-full bg-surface-100 hover:bg-surface-200 border border-border hover:border-accent-400 text-ink-800 font-semibold truncate max-w-[180px] lg:max-w-[280px] cursor-pointer transition-colors text-left flex items-center gap-1.5 group"
+              title="Click to edit current brand idea"
             >
-              {ctx.user_facts.business_description
-                ? String(ctx.user_facts.business_description)
-                : 'New Brand Project'}
-            </span>
+              <span className="truncate">
+                {ctx.user_facts.business_description
+                  ? String(ctx.user_facts.business_description)
+                  : 'New Brand Project'}
+              </span>
+              <span className="text-[10px] text-ink-400 group-hover:text-accent-600 font-normal">✎</span>
+            </button>
             {cloudSaveStatus === 'saving' && (
               <span className="hidden md:inline-flex items-center gap-1.5 text-[11px] text-amber-700 font-medium bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
@@ -774,8 +894,9 @@ export function ChatWorkspace() {
                 </span>
               </div>
               <button
-                onClick={() => navigate('/idea-input')}
-                className="text-[11px] text-accent-600 hover:text-accent-800 hover:underline flex-shrink-0 font-medium"
+                type="button"
+                onClick={handleOpenEditIdea}
+                className="text-[11px] text-accent-600 hover:text-accent-800 hover:underline flex-shrink-0 font-medium cursor-pointer"
               >
                 Edit Idea
               </button>
@@ -1166,6 +1287,55 @@ export function ChatWorkspace() {
           </div>
         </main>
       </div>
+
+      {/* Edit Idea Modal */}
+      {isEditingIdea && (
+        <div className="fixed inset-0 bg-ink-950/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-border p-6 max-w-lg w-full space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-ink-950 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-accent-100 text-accent-700 flex items-center justify-center text-xs font-bold">✎</span>
+                Edit Brand Idea
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditingIdea(false)}
+                className="text-ink-400 hover:text-ink-700 text-sm font-semibold p-1 cursor-pointer"
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-ink-500">
+              Update your core startup or brand concept. Changing this will re-anchor FOIL's strategic reasoning.
+            </p>
+            <textarea
+              value={editIdeaText}
+              onChange={(e) => setEditIdeaText(e.target.value)}
+              rows={3}
+              className="w-full text-sm rounded-xl border border-border p-3 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 resize-none text-ink-900"
+              placeholder="e.g. Modern artisanal coffee shop with single-origin beans and subscription club"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsEditingIdea(false)}
+                className="btn-secondary text-xs px-3.5 py-1.5 font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditedIdea}
+                className="btn-primary text-xs px-4 py-1.5 font-semibold cursor-pointer"
+              >
+                Save & Update Brand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
