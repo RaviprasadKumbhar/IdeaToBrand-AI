@@ -40,6 +40,33 @@ export interface ScenarioProbeResult {
   affected_stages: StageName[];
   changed_fields: ScenarioBranchField[];
   branch_critic_findings: CriticFinding[];
+  comparisons?: Array<{
+    stage: StageName;
+    original_content: Record<string, unknown> | null;
+    original_state: string | null;
+    branch_draft: {
+      stage: StageName;
+      content: Record<string, unknown>;
+      generated_at: string;
+      attempt: number;
+    };
+    critic_findings: CriticFinding[];
+    has_changes: boolean;
+  }>;
+  scenario_override?: {
+    id: string;
+    triggered_from_stage: StageName;
+    what_if_input: string;
+    affected_fields: StageName[];
+    branch_drafts: Array<{
+      stage: StageName;
+      content: Record<string, unknown>;
+      generated_at: string;
+      attempt: number;
+    }>;
+    decision: string | null;
+    created_at: string;
+  };
 }
 
 /**
