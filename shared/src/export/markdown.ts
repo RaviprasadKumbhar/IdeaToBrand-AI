@@ -49,7 +49,7 @@ export function assembleBrandKit(
   const launch = ctx.approved_decisions.launch_prep!.content as unknown as LaunchPrepContent;
 
   // Resolve active direction / name / tagline
-  const activePositioning = positioning.selected_direction || positioning;
+  const activePositioning = positioning.selected_direction || (Array.isArray((positioning as any)?.directions) && (positioning as any).directions[0]) || positioning;
   const activeName =
     typeof naming.selected_name === "string"
       ? naming.selected_name

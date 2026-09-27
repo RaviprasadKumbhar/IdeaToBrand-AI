@@ -119,7 +119,7 @@ export function validateExportEligibility(
 
   // 4b. Positioning validation
   const pos = ctx.approved_decisions.positioning?.content as unknown as PositioningContent;
-  const posDirection = pos.selected_direction || pos;
+  const posDirection = pos.selected_direction || (Array.isArray((pos as any)?.directions) && (pos as any).directions[0]) || pos;
   if (!posDirection.value_proposition?.trim() && !posDirection.differentiator?.trim()) {
     return {
       eligible: false,
