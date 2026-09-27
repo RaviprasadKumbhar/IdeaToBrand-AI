@@ -104,7 +104,11 @@ export function ChatWorkspace() {
         {
           id: 'welcome-back',
           sender: 'assistant',
-          text: `Welcome back! I have loaded your brand project for: "${String(ctx.user_facts.business_description).slice(0, 80)}...". How would you like to proceed?`,
+          text: (() => {
+            const desc = String(ctx.user_facts.business_description);
+            const truncated = desc.length > 80;
+            return `Welcome back! I have loaded your brand project for: "${desc.slice(0, 80)}${truncated ? '...' : ''}". How would you like to proceed?`;
+          })(),
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ];
@@ -249,9 +253,6 @@ export function ChatWorkspace() {
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           ideaAcknowledgment: {
             idea: textToSend,
-            audience: 'Target audience to be isolated in Discovery',
-            problem: 'Core problem and frictions to be defined in Discovery',
-            opportunity: 'Differentiated brand strategy and positioning',
           },
           showDiscoveryCTA: true,
         };
@@ -334,13 +335,19 @@ export function ChatWorkspace() {
 
         setMessages((prev) => [...prev, assistantMsg]);
       }
-    } catch {
+    } catch (err: unknown) {
+      const errMsg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'An unexpected error occurred. Please try again.';
       setMessages((prev) => [
         ...prev,
         {
           id: nextId('error'),
           sender: 'assistant',
-          text: "FOIL couldn't generate this step right now.",
+          text: errMsg || "FOIL couldn't generate this step right now.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           isError: true,
         },

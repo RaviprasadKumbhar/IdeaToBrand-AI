@@ -43,7 +43,7 @@ export function ResetPasswordPage() {
     } else {
       setSuccess(true);
       setTimeout(() => {
-        navigate('/workspace');
+        navigate('/login');
       }, 2000);
     }
   }
@@ -85,7 +85,7 @@ export function ResetPasswordPage() {
               </div>
               <h3 className="text-base font-bold text-ink-950">Password Updated</h3>
               <p className="text-xs text-ink-600">
-                Your password has been successfully updated. Redirecting to your workspace...
+                Your password has been successfully updated. Redirecting to sign in...
               </p>
             </div>
           ) : (
