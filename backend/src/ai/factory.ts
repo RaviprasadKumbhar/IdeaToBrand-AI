@@ -16,10 +16,10 @@ export function getAIProvider(overrideProvider?: AIProvider): AIProvider {
   }
 
   let selected = process.env.AI_PROVIDER?.toUpperCase();
-  if (!selected) {
-    if (process.env.NODE_ENV === 'test') {
-      selected = 'MOCK';
-    } else if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) {
+  if (process.env.NODE_ENV === 'test' && process.env.AI_PROVIDER !== 'OPENAI_FORCE') {
+    selected = 'MOCK';
+  } else if (!selected) {
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith('sk-')) {
       selected = 'OPENAI';
     } else if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0) {
       selected = 'GEMINI';

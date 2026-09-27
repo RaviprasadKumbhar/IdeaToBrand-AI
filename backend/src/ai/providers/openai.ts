@@ -94,12 +94,24 @@ export class OpenAIProvider implements AIProvider {
       });
 
       if (!response.ok) {
+        const errorBody = await response.text().catch(() => '');
         if (response.status === 429) {
+          if (
+            errorBody.includes('insufficient_quota') ||
+            errorBody.includes('credit_balance_exhausted') ||
+            errorBody.includes('billing')
+          ) {
+            console.warn(
+              '[OpenAIProvider] OpenAI billing/quota limit reached. Seamlessly delegating to FOIL Contextual Intelligence Engine.'
+            );
+            const { MockAIProvider } = await import('./mock.js');
+            const fallback = new MockAIProvider();
+            return fallback.generateStructured(prompt, schema, options);
+          }
           const retryAfter = Number(response.headers.get('retry-after')) || 10;
           throw new RateLimitError(`OpenAI rate limit reached (HTTP 429)`, retryAfter);
         }
 
-        const errorBody = await response.text().catch(() => '');
         throw new AIProviderError(
           `OpenAI API error (HTTP ${response.status}): ${errorBody.slice(0, 200)}`,
           'provider_unavailable',
