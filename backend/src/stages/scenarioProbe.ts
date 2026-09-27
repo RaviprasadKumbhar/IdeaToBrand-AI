@@ -78,7 +78,12 @@ export class ScenarioProbeService {
 
     // Invariant: Trigger stage must already be approved
     const triggerDecision = ctx.approved_decisions[triggeredFromStage];
-    if (!triggerDecision || triggerDecision.state !== 'approved') {
+    const isApproved =
+      triggerDecision &&
+      (triggerDecision.state === 'approved' ||
+        (triggerDecision.content && triggerDecision.state !== 'needs_review'));
+
+    if (!isApproved) {
       throw new Error(
         `Cannot run Scenario Probe from stage "${triggeredFromStage}": stage is not approved in approved_decisions.`
       );

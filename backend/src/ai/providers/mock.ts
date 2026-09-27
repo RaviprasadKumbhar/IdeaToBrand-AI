@@ -1,5 +1,5 @@
 import type { ZodSchema } from 'zod';
-import type { CriticFinding } from '@foil/shared';
+import type { CriticFinding, StageName } from '@foil/shared';
 import {
   AIProvider,
   AIProviderResult,
@@ -66,7 +66,7 @@ function extractContextFromPrompt(prompt: string) {
   }
 
   // Check for audience in concept or prompt
-  const audMatch = concept.match(/\b(?:for|to)\s+([a-zA-Z\s]{3,45}?)(?:\b(?:in|who|that|seeking|to)\b|[.,;]|$)/i);
+  const audMatch = concept.match(/\b(?:for|to)\s+([a-zA-Z\s]{3,45}?)(?:\b(?:in|who|that|seeking|looking|preparing|struggling|facing|to)\b|[.,;]|$)/i);
   if (audMatch && audMatch[1]) {
     const candidate = audMatch[1].trim();
     if (!/^(?:my brand|myself|us|start|build)$/i.test(candidate)) {
@@ -75,6 +75,22 @@ function extractContextFromPrompt(prompt: string) {
   }
 
   return { concept, audience, facts };
+}
+
+export function extractScenarioFromPrompt(prompt: string): string | null {
+  const m1 = prompt.match(/What-If Condition:\s*"([^"]+)"/i);
+  if (m1 && m1[1] && m1[1].trim()) return m1[1].trim();
+
+  const m2 = prompt.match(/SCENARIO PROBE OVERRIDE[^:]*:\s*\n?[^\n]*\nWhat-If Condition:\s*"([^"]+)"/i);
+  if (m2 && m2[1] && m2[1].trim()) return m2[1].trim();
+
+  const m3 = prompt.match(/what_if_input["']?\s*:\s*["']([^"'\n]+)["']/i);
+  if (m3 && m3[1] && m3[1].trim()) return m3[1].trim();
+
+  const m4 = prompt.match(/under premise:\s*"([^"]+)"/i);
+  if (m4 && m4[1] && m4[1].trim()) return m4[1].trim();
+
+  return null;
 }
 
 function deriveDynamicBrandName(concept: string): string {
@@ -92,21 +108,185 @@ function deriveDynamicBrandName(concept: string): string {
   return 'NovaBridge';
 }
 
+export function generateMockCriticFindings(prompt: string): string {
+  if (
+    prompt.includes('Holistic Consistency Audit') ||
+    prompt.includes('ConsistencyFindingSchema') ||
+    prompt.includes('fields_in_conflict')
+  ) {
+    return JSON.stringify([
+      {
+        id: `cons-${Date.now()}-1`,
+        fields_in_conflict: ['tagline_pitch', 'positioning'],
+        issue_type: 'cliche',
+        evidence: 'Tagline phrasing relies on generic category terminology without distinctive proprietary framing.',
+        why_it_matters: 'Weakens market defensibility and causes the brand to sound interchangeable with legacy market incumbents.',
+        sharper_alternative: 'Anchor tagline directly to the proprietary operational differentiator defined in approved positioning.',
+        user_action: null,
+      },
+    ]);
+  }
+
+  const stageMatch = prompt.match(/Draft to Evaluate \(([^)]+)\)/i) || prompt.match(/Evaluation Stage:\s*([a-z_]+)/i);
+  const stage = (stageMatch ? stageMatch[1].trim() : 'positioning') as StageName;
+
+  switch (stage) {
+    case 'discovery':
+      return JSON.stringify([
+        {
+          id: `crit-disc-${Date.now()}`,
+          stage: 'discovery',
+          target_field: 'constraints',
+          issue_type: 'vague',
+          evidence: 'Broad assumption around user adoption speed and operational availability',
+          explanation: 'Initial constraints lack concrete latency thresholds or hardware fallback requirements.',
+          sharper_alternative: 'Specify sub-second response limits and offline-first mobile sync constraints for intermittent connectivity.',
+          user_action: null,
+        },
+      ]);
+
+    case 'positioning':
+      return JSON.stringify([
+        {
+          id: `crit-pos-${Date.now()}`,
+          stage: 'positioning',
+          target_field: 'value_proposition',
+          issue_type: 'cliche',
+          evidence: 'All-in-one or seamless workflow phrasing',
+          explanation: 'Generalized convenience claims are claimed by every SaaS competitor and fail to establish category leadership.',
+          sharper_alternative: 'Quantify the direct economic payoff: guaranteed 24-hour turnaround or 80% administrative overhead reduction.',
+          user_action: null,
+        },
+      ]);
+
+    case 'naming_personality':
+      return JSON.stringify([
+        {
+          id: `crit-name-${Date.now()}`,
+          stage: 'naming_personality',
+          target_field: 'naming_directions',
+          issue_type: 'cliche',
+          evidence: 'Predictable category compounding in proposed naming directions',
+          explanation: 'Literal functional compound names risk blending into utility search results rather than commanding brand premium.',
+          sharper_alternative: 'Introduce an evocative metaphoric name that anchors deep visceral customer outcomes.',
+          user_action: null,
+        },
+      ]);
+
+    case 'tagline_pitch':
+      return JSON.stringify([
+        {
+          id: `crit-tag-${Date.now()}`,
+          stage: 'tagline_pitch',
+          target_field: 'tagline_options',
+          issue_type: 'cliche',
+          evidence: 'Interchangeable slogan structure ("The smarter way to...")',
+          explanation: 'Could be adopted by a direct competitor with zero brand friction; lacks defensible strategic polarity.',
+          sharper_alternative: 'Lead directly with the verified operational differentiator and zero-compromise customer guarantee.',
+          user_action: null,
+        },
+      ]);
+
+    case 'visual_brief':
+      return JSON.stringify([
+        {
+          id: `crit-vis-${Date.now()}`,
+          stage: 'visual_brief',
+          target_field: 'concepts_to_avoid',
+          issue_type: 'audience_mismatch',
+          evidence: 'Generic stock photography metaphors',
+          explanation: 'Impersonal stock art immediately signals generic corporate veneer and destroys authentic founder credibility.',
+          sharper_alternative: 'Enforce documentary-style, authentic workspace and field photography showcasing real practitioners.',
+          user_action: null,
+        },
+      ]);
+
+    case 'voice_messaging':
+      return JSON.stringify([
+        {
+          id: `crit-voice-${Date.now()}`,
+          stage: 'voice_messaging',
+          target_field: 'dont_list',
+          issue_type: 'vague',
+          evidence: 'General instruction to avoid corporate jargon',
+          explanation: 'Vague prohibition fails to guide copywriters without an explicit list of prohibited corporate phrases.',
+          sharper_alternative: 'Formally blacklist specific buzzwords: "synergy", "paradigm", "frictionless", and "empower".',
+          user_action: null,
+        },
+      ]);
+
+    case 'launch_prep':
+      return JSON.stringify([
+        {
+          id: `crit-launch-${Date.now()}`,
+          stage: 'launch_prep',
+          target_field: 'landing_headline',
+          issue_type: 'vague',
+          evidence: 'Passive descriptive claims in headline copy',
+          explanation: 'Visitors bounce in seconds if the headline describes product existence instead of urgent customer transformation.',
+          sharper_alternative: 'Rewrite headline as an immediate, quantifiable promise delivering measurable value on day one.',
+          user_action: null,
+        },
+      ]);
+
+    default:
+      return JSON.stringify([
+        {
+          id: `crit-gen-${Date.now()}`,
+          stage: 'positioning',
+          target_field: 'differentiator',
+          issue_type: 'cliche',
+          evidence: 'General efficiency claim without empirical backing',
+          explanation: 'Target audience requires verified performance metrics before switching away from incumbent tooling.',
+          sharper_alternative: 'Replace general claim with documented benchmarks and verified latency improvements.',
+          user_action: null,
+        },
+      ]);
+  }
+}
+
 function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string {
+  // Check if Critic evaluation requested
+  const isCriticPrompt =
+    prompt.includes('You are the Critic AI for FOIL') ||
+    prompt.includes('CriticFindingsArraySchema') ||
+    prompt.includes('ConsistencyFindingsArraySchema') ||
+    (schema && (schema as any)._def?.typeName === 'ZodArray');
+
+  if (isCriticPrompt) {
+    return generateMockCriticFindings(prompt);
+  }
+
   const { concept, audience, facts } = extractContextFromPrompt(prompt);
   const userIdea = concept || 'Innovative startup service';
 
+  // Scenario Override Detection
+  const scenarioOverride = extractScenarioFromPrompt(prompt);
+  const hasScenario = Boolean(scenarioOverride);
+
+  const isWorkingEngineersScenario = hasScenario &&
+    /working (?:software )?engineers|senior developers|tech leads|professional developers|enterprise engineering|working professionals/i.test(scenarioOverride!);
+  const isEnterpriseB2BScenario = hasScenario &&
+    /enterprise|b2b|corporate|commercial|logistics|wholesale/i.test(scenarioOverride!);
+  const isYouthRoboticsScenario = hasScenario &&
+    /high school|robotics|k-12|teen/i.test(scenarioOverride!);
+
   // Domain detection
-  const isFarmersDirect = /farmer|agriculture|produce|farm|crop|harvest|grower/i.test(prompt);
+  const isRestaurantReservation = /restaurant|dining|bistro|cafe|table reservation|dinner reservation|eatery/i.test(prompt) ||
+    (/reservation/i.test(prompt) && /food|table|guest|restaurant/i.test(prompt));
+  const isFarmersDirect = /farmer|agriculture|produce|farm|crop|harvest|grower/i.test(prompt) && !isRestaurantReservation;
   const isTeammateMatching = (/teammate|peer match|capstone partner|class project partner/i.test(prompt)) &&
     !/assistant|ai study/i.test(prompt);
   const isStudyAssistant = /study assistant|ai study|study helper|engineering student.*study|exam prep|tutor/i.test(prompt) ||
-    (/assistant/i.test(prompt) && /student/i.test(prompt));
-  const isAppointmentBooking = /appointment|booking|schedul|calendar|reservation/i.test(prompt);
+    ((/assistant/i.test(prompt) || /tutor/i.test(prompt)) && /student/i.test(prompt));
+  const isAppointmentBooking = (/appointment|booking|schedul|calendar/i.test(prompt) || /reservation/i.test(prompt)) &&
+    !isRestaurantReservation;
   const isIndianSnack = /snack|namkeen|chaat|millet|indian food/i.test(userIdea);
 
-  const dynamicName = isFarmersDirect
+  let dynamicName = isFarmersDirect
     ? 'HarvestDirect'
+    : isRestaurantReservation
+    ? 'TableFlow'
     : isStudyAssistant
     ? 'StudyEngine'
     : isAppointmentBooking
@@ -117,11 +297,150 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
     ? 'PranaBites'
     : deriveDynamicBrandName(userIdea);
 
+  if (hasScenario) {
+    if (isWorkingEngineersScenario) {
+      dynamicName = 'DevEngine';
+    } else if (isEnterpriseB2BScenario) {
+      dynamicName = 'OmniSupply';
+    } else if (isYouthRoboticsScenario) {
+      dynamicName = 'BotForge';
+    } else {
+      dynamicName = `${dynamicName}Pivot`;
+    }
+  }
+
   if (schema) {
     const shape = (schema as any).shape || (typeof (schema as any)._def?.shape === 'function' ? (schema as any)._def.shape() : (schema as any)._def?.shape);
     if (shape) {
       // ─── 1. POSITIONING STAGE ──────────────────────────────────────────────
       if ('directions' in shape) {
+        // SCENARIO OVERRIDE BRANCH
+        if (hasScenario) {
+          if (isWorkingEngineersScenario) {
+            return JSON.stringify({
+              directions: [
+                {
+                  title: 'Enterprise Architectural Intelligence',
+                  category: 'Developer Productivity & Code Intelligence',
+                  target_audience: 'Senior software engineers, staff architects, and enterprise engineering teams',
+                  core_problem: 'Working software engineers waste hours deciphering legacy codebases, undocumented microservices, and architectural dependencies',
+                  differentiator: 'Deep codebase semantic graph analysis with interactive architectural reasoning and automated refactoring proofs',
+                  value_proposition: 'Navigate, refactor, and master complex legacy codebases at 3x velocity',
+                  competitive_angle: 'Unlike student code-assistants, models holistic system architectures and verifies type invariants',
+                  strategic_rationale: 'Enterprise engineering teams pay premium seat licenses to shorten technical debt ramp-up time',
+                  potential_weakness: 'Requires enterprise security compliance (SOC2) and on-premise code indexing capabilities',
+                  critic_findings: [],
+                },
+                {
+                  title: 'The Production SRE Copilot',
+                  category: 'Autonomous Systems & Reliability Engineering',
+                  target_audience: 'DevOps engineers, SREs, and on-call engineering squads',
+                  core_problem: 'Production incidents require high-stress cognitive synthesis across logs, metrics, and distributed traces under tight SLA clocks',
+                  differentiator: 'Real-time root cause inference that simulates multi-service failure cascades and synthesizes verified remediation scripts',
+                  value_proposition: 'Slash mean time to resolution (MTTR) during high-severity production outages',
+                  competitive_angle: 'Active automated diagnosis rather than static alert dashboards',
+                  strategic_rationale: 'High immediate enterprise ROI through averted downtime penalties',
+                  potential_weakness: 'Requires tight integrations across heterogeneous monitoring tools (Datadog, AWS, Kubernetes)',
+                  critic_findings: [],
+                },
+              ],
+            });
+          }
+
+          if (isEnterpriseB2BScenario) {
+            return JSON.stringify({
+              directions: [
+                {
+                  title: 'The Enterprise Supply Nexus',
+                  category: 'Enterprise B2B Procurement & Distribution',
+                  target_audience: 'Enterprise procurement heads, supply chain directors, and commercial accounts',
+                  core_problem: 'Fragmented supplier networks and high operational overhead in B2B supply contracts',
+                  differentiator: 'Automated bulk ordering with volume pricing and enterprise SLA tracking',
+                  value_proposition: 'Streamline B2B procurement with guaranteed volume delivery',
+                  competitive_angle: 'Consolidates multi-vendor logistics into a single automated ledger',
+                  strategic_rationale: 'High enterprise contract value and recurring quarterly reorders',
+                  potential_weakness: 'Long enterprise procurement sales cycles',
+                  critic_findings: [],
+                },
+                {
+                  title: 'Direct Institutional Contracts',
+                  category: 'Commercial Volume Marketplace',
+                  target_audience: 'Regional commercial distributors and institutional buyers',
+                  core_problem: 'Lack of verified supplier compliance and spot-market price volatility',
+                  differentiator: 'Transparent contract pricing with bonded fulfillment guarantees',
+                  value_proposition: 'De-risk volume supply chains with certified regional producers',
+                  competitive_angle: 'Replaces opaque spot brokerages with a verified producer network',
+                  strategic_rationale: 'Builds defensible institutional liquidity',
+                  potential_weakness: 'Requires bonded supplier working capital',
+                  critic_findings: [],
+                },
+              ],
+            });
+          }
+
+          if (isYouthRoboticsScenario) {
+            return JSON.stringify({
+              directions: [
+                {
+                  title: 'The Robotics Sprint Lab',
+                  category: 'K-12 STEM & Robotics Collaboration',
+                  target_audience: 'High school robotics teams, mentors, and STEM clubs',
+                  core_problem: 'Student robotics teams struggle with parts tracking, CAD synchronization, and competition build timelines',
+                  differentiator: 'Integrated robot BOM tracking, task sprints, and rules compliance checks',
+                  value_proposition: 'Build championship-ready robots on schedule without chaos',
+                  competitive_angle: 'Tailored for FIRST/VEX competition seasons rather than generic project management',
+                  strategic_rationale: 'High student engagement and school robotics club sponsorship',
+                  potential_weakness: 'Seasonal competition activity peaks',
+                  critic_findings: [],
+                },
+                {
+                  title: 'Mentored Engineering Pathways',
+                  category: 'Youth Technical Apprenticeship',
+                  target_audience: 'High school STEM students and volunteer engineering mentors',
+                  core_problem: 'High school students lack direct access to practicing engineering mentors for design reviews',
+                  differentiator: 'Structured peer-and-mentor engineering review workflows for competitive robotics',
+                  value_proposition: 'Learn real engineering design from industry professionals while building your robot',
+                  competitive_angle: 'Connects competitive builds directly to professional engineering mentorship',
+                  strategic_rationale: 'Attracts corporate engineering foundation grants',
+                  potential_weakness: 'Requires ongoing volunteer mentor recruitment',
+                  critic_findings: [],
+                },
+              ],
+            });
+          }
+
+          // General Scenario Adaptation
+          return JSON.stringify({
+            directions: [
+              {
+                title: `The Adapted ${dynamicName} Framework`,
+                category: 'Adaptive Category Leader',
+                target_audience: `Pioneers and teams operating under premise: "${scenarioOverride}"`,
+                core_problem: `Current solutions fail to account for the strategic premise shift: "${scenarioOverride}"`,
+                differentiator: `Specifically architected to solve core bottlenecks under "${scenarioOverride}"`,
+                value_proposition: `Dependable, tailored outcomes purpose-built for "${scenarioOverride}"`,
+                competitive_angle: 'First-principles adaptation rather than forced legacy retrofits',
+                strategic_rationale: 'Captures first-mover advantage in the pivoted market space',
+                potential_weakness: 'Requires educating users on adapted vs standard market approaches',
+                critic_findings: [],
+              },
+              {
+                title: `The Specialized ${dynamicName} Network`,
+                category: 'Targeted High-Velocity Platform',
+                target_audience: `Organizations and users seeking dedicated support for "${scenarioOverride}"`,
+                core_problem: `Operational friction and lack of tooling tailored to "${scenarioOverride}"`,
+                differentiator: `Frictionless specialized workflow engineered around "${scenarioOverride}"`,
+                value_proposition: `Superior efficiency and speed built directly for "${scenarioOverride}"`,
+                competitive_angle: 'Dedicated focus without generic legacy overhead',
+                strategic_rationale: 'High initial customer retention in focused niche',
+                potential_weakness: 'Smaller initial addressable market requiring rapid expansion',
+                critic_findings: [],
+              },
+            ],
+          });
+        }
+
+        // STANDARD DOMAIN BRANCHES
         if (isFarmersDirect) {
           return JSON.stringify({
             directions: [
@@ -147,6 +466,37 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
                 competitive_angle: 'Bypasses predatory broker commissions with a collective grower-owned pricing model',
                 strategic_rationale: 'Builds defensibility through high grower retention and recurring wholesale order volume',
                 potential_weakness: 'Requires minimum order density to optimize regional delivery routes',
+                critic_findings: [],
+              },
+            ],
+          });
+        }
+
+        if (isRestaurantReservation) {
+          return JSON.stringify({
+            directions: [
+              {
+                title: 'The Direct-to-Table Platform',
+                category: 'Zero-Commission Restaurant Operating System',
+                target_audience: audience || 'Independent bistro owners and chef-driven dining venues',
+                core_problem: 'Aggregator platforms charge $1–$3 per seated diner and withhold valuable guest dining data',
+                differentiator: 'Flat-fee direct table reservation widget with automated SMS no-show protection and private guest CRM',
+                value_proposition: 'Full tables, zero cover commissions, and direct customer ownership',
+                competitive_angle: 'Unlike OpenTable or Resy, takes zero commission per diner and gives 100% of guest data back to the restaurant',
+                strategic_rationale: 'Independent restauranteurs actively seek escape from aggregator commission extortion',
+                potential_weakness: 'Requires restaurant to drive its own local brand traffic rather than relying on discovery aggregator apps',
+                critic_findings: [],
+              },
+              {
+                title: 'The Neighborhood Dining Pass',
+                category: 'Local Culinary Membership & Booking Network',
+                target_audience: audience || 'Local foodies, regular dining patrons, and neighborhood supper clubs',
+                core_problem: 'Frequent diners struggle to secure peak-hour tables at beloved local spots while restaurants experience unpredictable midweek lulls',
+                differentiator: 'Community-driven membership that unlocks priority booking and off-peak table perks at curated independent eateries',
+                value_proposition: 'Guaranteed access to your favorite neighborhood tables while supporting independent hospitality',
+                competitive_angle: 'Aligns diner loyalty with restaurant yield optimization rather than transactional booking fees',
+                strategic_rationale: 'Turns sporadic diners into recurring community advocates who fill empty midweek seats',
+                potential_weakness: 'Requires maintaining strict balance between diner member perks and regular walk-in availability',
                 critic_findings: [],
               },
             ],
@@ -310,6 +660,27 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
 
       // ─── 2. DISCOVERY STAGE ────────────────────────────────────────────────
       if ('core_problem' in shape) {
+        if (hasScenario) {
+          if (isWorkingEngineersScenario) {
+            return JSON.stringify({
+              core_problem: 'Senior software engineers and engineering teams waste hours deciphering legacy codebases, undocumented microservices, and architectural technical debt.',
+              target_audience: 'Senior software engineers, staff architects, and enterprise engineering teams',
+              context_situation: 'Complex multi-repo production environments with high technical debt and continuous deployment pipelines',
+              user_goals: 'Accelerate codebase comprehension, automate architectural refactoring, and reduce regression bugs',
+              constraints: 'Zero code leakage, strict enterprise SOC2 compliance, and offline semantic code graph analysis',
+              value_desired_outcome: 'High developer velocity, verified architecture refactorings, and confident production deployments',
+              open_questions: ['Which programming languages and frameworks should receive prioritized abstract syntax tree indexing?'],
+              known_facts: facts.length > 0 ? facts : [userIdea, scenarioOverride!],
+              inferred_assumptions: [
+                {
+                  value: 'Senior engineers prioritize mathematically sound refactoring proofs over superficial autocomplete suggestions',
+                  rationale: 'Enterprise production systems cannot afford hallucinated syntax or broken invariants',
+                },
+              ],
+            });
+          }
+        }
+
         if (isFarmersDirect) {
           return JSON.stringify({
             core_problem: 'Small regional farmers lose 30–50% of revenue to distribution middlemen while local buyers lack reliable direct access to fresh, sustainably harvested local produce.',
@@ -324,6 +695,25 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
               {
                 value: 'Local consumers will pay a fair direct price when provenance and same-day harvest freshness are verified',
                 rationale: 'Growing consumer flight from supermarket supply chains toward transparent local food systems',
+              },
+            ],
+          });
+        }
+
+        if (isRestaurantReservation) {
+          return JSON.stringify({
+            core_problem: 'Independent restaurants lose 15–20% of seating capacity to customer no-shows and pay predatory per-cover commission fees to monopolistic reservation platforms.',
+            target_audience: audience || 'Independent local restaurant owners, general managers, head chefs, and neighborhood dining guests',
+            context_situation: 'High-margin evening dinner shifts and busy weekend services where unfilled tables directly erode thin restaurant margins',
+            user_goals: 'Fill dining tables, eliminate no-shows with smart confirmations, and retain customer data without paying third-party cover fees',
+            constraints: 'Zero per-cover commission fees, direct mobile guest booking without app downloads, and real-time floor plan table management',
+            value_desired_outcome: 'Maximized dining capacity, protected profit margins, and loyal direct guest relationships',
+            open_questions: ['What automated SMS confirmation interval achieves the highest guest attendance rate on weekend dinner shifts?'],
+            known_facts: facts.length > 0 ? facts : [userIdea],
+            inferred_assumptions: [
+              {
+                value: 'Diners prefer booking directly through the restaurant website if confirmation and table selection are instant',
+                rationale: 'Over 70% of restaurant guests visit a venue website directly before looking up third-party aggregator listings',
               },
             ],
           });
@@ -430,18 +820,86 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
         let territory = 'Authentic Utility & Purpose';
         let rationale = `Directly reflects customer empowerment in ${userIdea.slice(0, 50)}`;
 
-        if (isFarmersDirect) {
+        let personalityTraits = [
+          { trait: 'Pragmatic', audience_justification: 'Users need clear, dependable utility from day one' },
+          { trait: 'Honest', audience_justification: 'Transparent communication builds lasting customer trust' },
+          { trait: 'Empowering', audience_justification: 'Directly helps users overcome their core friction points' },
+        ];
+
+        if (hasScenario) {
+          if (isWorkingEngineersScenario) {
+            proposedName = 'DevEngine';
+            territory = 'Architectural Rigor & Engineering Velocity';
+            rationale = 'Directly conveys computational mastery, enterprise reliability, and deep software craft';
+            personalityTraits = [
+              { trait: 'Authoritative', audience_justification: 'Senior engineers demand high-conviction, mathematically verified solutions' },
+              { trait: 'Efficient', audience_justification: 'Time is the single scarcest resource for engineering leads' },
+              { trait: 'Robust', audience_justification: 'Enterprise software must never break production builds' },
+            ];
+          } else if (isEnterpriseB2BScenario) {
+            proposedName = 'OmniSupply';
+            territory = 'Institutional Reliability & Compliance';
+            rationale = 'Conveys large-scale enterprise execution, high contractual compliance, and end-to-end reliability';
+            personalityTraits = [
+              { trait: 'Scalable', audience_justification: 'Enterprise procurement heads require massive scale with zero downtime' },
+              { trait: 'Compliant', audience_justification: 'Institutional buyers must meet strict regulatory and legal audits' },
+              { trait: 'Dependable', audience_justification: 'Supply chain contracts demand guaranteed fulfillment SLAs' },
+            ];
+          } else if (isYouthRoboticsScenario) {
+            proposedName = 'BotForge';
+            territory = 'Hands-On Technical Creation';
+            rationale = 'Inspires high-school builders to design, iterate, and compete with passion';
+            personalityTraits = [
+              { trait: 'Hands-on', audience_justification: 'Robotics teams learn by fabricating and testing physical hardware' },
+              { trait: 'Encouraging', audience_justification: 'Young engineers need positive reinforcement through build failures' },
+              { trait: 'Collaborative', audience_justification: 'Championship teams thrive on seamless peer coordination' },
+            ];
+          } else {
+            proposedName = `${dynamicName}Pivot`;
+            territory = 'Strategic Adaptability';
+            rationale = `Crafted to adapt specifically to the new strategic premise: "${scenarioOverride}"`;
+            personalityTraits = [
+              { trait: 'Adaptable', audience_justification: 'Essential for navigating the pivoted market conditions' },
+              { trait: 'Decisive', audience_justification: 'Early adopters need high conviction and clear direction' },
+              { trait: 'Resilient', audience_justification: 'Navigating strategic shifts requires unwavering operational grit' },
+            ];
+          }
+        } else if (isFarmersDirect) {
           proposedName = 'HarvestDirect';
           territory = 'Freshness & Direct Connection';
           rationale = 'Bridges fresh regional farm harvests directly with local neighborhood households with honest transparency';
+          personalityTraits = [
+            { trait: 'Grounded', audience_justification: 'Honors agricultural roots and direct producer relationships' },
+            { trait: 'Transparent', audience_justification: 'Local buyers demand full visibility into farm origins and harvest times' },
+            { trait: 'Nourishing', audience_justification: 'Reflects the vitality and health of fresh seasonal produce' },
+          ];
+        } else if (isRestaurantReservation) {
+          proposedName = 'TableFlow';
+          territory = 'Hospitality Mastery & Precision';
+          rationale = 'Evokes seamless dining room cadence, effortless table turnover, and culinary elegance';
+          personalityTraits = [
+            { trait: 'Hospitable', audience_justification: 'Hospitality professionals value warmth and empathy in their operational tools' },
+            { trait: 'Uncompromising', audience_justification: 'Restaurant margins require precision and zero tolerance for wasted covers' },
+            { trait: 'Discreet', audience_justification: 'The booking software should never distract from the chef’s culinary experience' },
+          ];
         } else if (isStudyAssistant) {
           proposedName = 'StudyEngine';
           territory = 'Technical Mastery & Precision';
           rationale = 'Evokes computational power, structured engineering logic, and academic momentum';
+          personalityTraits = [
+            { trait: 'Analytical', audience_justification: 'Engineering students require structured mathematical logic' },
+            { trait: 'Encouraging', audience_justification: 'Technical coursework can be overwhelming; encouragement prevents burnout' },
+            { trait: 'Precise', audience_justification: 'Engineering concepts leave no room for hand-waving or ambiguity' },
+          ];
         } else if (isAppointmentBooking) {
           proposedName = 'BookLocal';
           territory = 'Effortless Access & Reliability';
           rationale = 'Communicates simple, dependable appointment scheduling designed specifically for local service providers';
+          personalityTraits = [
+            { trait: 'Punctual', audience_justification: 'Scheduling tools must embody time-honored dependability' },
+            { trait: 'Friendly', audience_justification: 'Local clients appreciate a warm, neighborly touch' },
+            { trait: 'Concise', audience_justification: 'Fast booking removes administrative friction for busy service providers' },
+          ];
         } else if (isTeammateMatching) {
           proposedName = 'StudyNest';
           territory = 'Collaborative Growth';
@@ -462,14 +920,10 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
               relationship_to_positioning: `Reinforces the primary strategic differentiator for ${userIdea.slice(0, 50)}`,
               potential_concern: 'Requires consistent brand storytelling to highlight unique market value',
               critic_analysis: 'Distinctive, evocative, and easily pronounced without generic tech clichés',
-              sharper_alternative: `Consider ${proposedName}Hub as an alternative`,
+              sharper_alternative: `Consider ${proposedName}Pro as an alternative`,
             },
           ],
-          personality_traits: [
-            { trait: 'Pragmatic', audience_justification: 'Users need clear, dependable utility from day one' },
-            { trait: 'Honest', audience_justification: 'Transparent communication builds lasting customer trust' },
-            { trait: 'Empowering', audience_justification: 'Directly helps users overcome their core friction points' },
-          ],
+          personality_traits: personalityTraits,
           traits_to_avoid: ['Pretentious', 'Bureaucratic', 'Generic'],
           brand_principles: [
             { principle: 'Customer-first integrity', rationale: 'Long-term brand equity relies on dependable value delivery' },
@@ -480,6 +934,49 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
 
       // ─── 4. TAGLINE & PITCH STAGE ──────────────────────────────────────────
       if ('tagline_options' in shape) {
+        if (hasScenario) {
+          if (isWorkingEngineersScenario) {
+            return JSON.stringify({
+              tagline_options: [
+                'Architectural clarity for complex codebases.',
+                'Accelerate engineering velocity from commit to production.',
+              ],
+              one_line_pitch: 'DevEngine empowers senior software engineers to unravel legacy codebases and execute complex architectural migrations with verified AI reasoning.',
+              rationale_per_tagline: [
+                'Direct appeal to senior engineering technical pain point',
+                'Velocity and reliability promise for enterprise engineering organizations',
+              ],
+              critic_findings: [],
+            });
+          }
+          if (isEnterpriseB2BScenario) {
+            return JSON.stringify({
+              tagline_options: [
+                'Enterprise procurement, automated and compliant.',
+                'Volume contracts with guaranteed fulfillment SLAs.',
+              ],
+              one_line_pitch: 'OmniSupply connects institutional buyers with certified regional producers for transparent bulk contract fulfillment.',
+              rationale_per_tagline: [
+                'Clear regulatory and automation value for enterprise procurement',
+                'Operational peace of mind with bonded delivery SLAs',
+              ],
+              critic_findings: [],
+            });
+          }
+          return JSON.stringify({
+            tagline_options: [
+              `Engineered for ${scenarioOverride?.slice(0, 35)}.`,
+              `The new benchmark for ${scenarioOverride?.slice(0, 35)}.`,
+            ],
+            one_line_pitch: `${dynamicName} delivers dedicated, adapted solutions addressing ${scenarioOverride?.slice(0, 50)}.`,
+            rationale_per_tagline: [
+              'Explicitly targets the pivoted market condition',
+              'Establishes bold category leadership under the new premise',
+            ],
+            critic_findings: [],
+          });
+        }
+
         if (isFarmersDirect) {
           return JSON.stringify({
             tagline_options: [
@@ -490,6 +987,21 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
             rationale_per_tagline: [
               'Clear functional delivery and freshness promise',
               'Emotional connection to local agriculture',
+            ],
+            critic_findings: [],
+          });
+        }
+
+        if (isRestaurantReservation) {
+          return JSON.stringify({
+            tagline_options: [
+              'Fill every table. Keep every dollar.',
+              'Direct table reservations for independent dining.',
+            ],
+            one_line_pitch: 'TableFlow provides zero-commission reservation software helping local restaurants eliminate no-shows and own their guest relationships.',
+            rationale_per_tagline: [
+              'Bold financial promise speaking to thin restaurant margins',
+              'Clear functional category definition',
             ],
             critic_findings: [],
           });
@@ -572,6 +1084,52 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
 
       // ─── 5. VISUAL BRIEF STAGE ─────────────────────────────────────────────
       if ('hex_palette' in shape) {
+        if (hasScenario) {
+          if (isWorkingEngineersScenario) {
+            return JSON.stringify({
+              logo_direction: 'Monolithic terminal prompt symbol fused with modular architectural node',
+              color_mood: 'Dark terminal charcoal, electric cyan, and clean emerald status accent',
+              hex_palette: ['#090D16', '#06B6D4', '#10B981', '#1E293B'],
+              type_roles: ['Headings: JetBrains Mono Bold', 'Body: Inter / Fira Code'],
+              shape_language: 'High-density terminal cards with modular code block geometry and syntax borders',
+              symbol_language: 'Terminal prompts, binary trees, microservice mesh nodes, and pull request diffs',
+              composition_layout: 'IDE-inspired split editor canvas with code inspection and architectural telemetry panels',
+              imagery_direction: 'Dark-mode multi-monitor workstations, clean terminal sessions, and architecture whiteboards',
+              concepts_to_avoid: ['Colorful student doodle art', 'Stock business handshakes'],
+              rationale_linking_to_audience_and_positioning: 'Anchors brand in authentic developer aesthetics and technical credibility',
+              concept_disclaimer: 'AI-generated visual concept / design direction — not production-ready artwork.',
+            });
+          }
+          if (isEnterpriseB2BScenario) {
+            return JSON.stringify({
+              logo_direction: 'Intersecting structural pillars forming an institutional vault seal',
+              color_mood: 'Corporate steel, deep navy, and platinum',
+              hex_palette: ['#1E293B', '#1E40AF', '#64748B', '#F1F5F9'],
+              type_roles: ['Headings: Space Grotesk Bold', 'Body: Inter'],
+              shape_language: 'Solid architectural rectangles with high-contrast borders',
+              symbol_language: 'Vaults, ledger grids, verified contract badges, and supply nodes',
+              composition_layout: 'High-density corporate dashboard with SLA telemetry',
+              imagery_direction: 'Modern commercial distribution hubs, automated freight docks, and executive boardrooms',
+              concepts_to_avoid: ['Casual consumer emojis', 'Playful pastels'],
+              rationale_linking_to_audience_and_positioning: 'Reflects institutional balance sheet stability and enterprise trust',
+              concept_disclaimer: 'AI-generated visual concept / design direction — not production-ready artwork.',
+            });
+          }
+          return JSON.stringify({
+            logo_direction: 'Dynamic chevron vector indicating forward strategic pivot',
+            color_mood: 'Midnight obsidian, electric violet, and vivid rose',
+            hex_palette: ['#111827', '#6366F1', '#EC4899', '#F9FAFB'],
+            type_roles: ['Headings: Space Grotesk', 'Body: Inter'],
+            shape_language: 'Sharp angled geometric cards with dynamic forward slants',
+            symbol_language: 'Pivot vectors, adaptive nodes, and velocity markers',
+            composition_layout: 'Asymmetric editorial grid with bold contrast highlights',
+            imagery_direction: 'High-energy agile teams executing rapid strategic pivots',
+            concepts_to_avoid: ['Static legacy corporate clip-art', 'Passive stock photography'],
+            rationale_linking_to_audience_and_positioning: 'Visually encodes momentum, strategic adaptation, and category disruption',
+            concept_disclaimer: 'AI-generated visual concept / design direction — not production-ready artwork.',
+          });
+        }
+
         if (isFarmersDirect) {
           return JSON.stringify({
             logo_direction: 'Stylized leaf and furrow motif forming a clean modern harvest seal',
@@ -584,6 +1142,22 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
             imagery_direction: 'Authentic local farmers in fields, morning dew on fresh vegetables, and bustling farm gates',
             concepts_to_avoid: ['Industrial tractor clipart', 'Generic mass-supermarket barcode graphics'],
             rationale_linking_to_audience_and_positioning: 'Balances agricultural warmth and honesty with crisp modern logistics efficiency',
+            concept_disclaimer: 'AI-generated visual concept / design direction — not production-ready artwork.',
+          });
+        }
+
+        if (isRestaurantReservation) {
+          return JSON.stringify({
+            logo_direction: 'Elegant minimalist place setting and architectural table silhouette',
+            color_mood: 'Deep bistro burgundy, warm brass, and soft linen cream',
+            hex_palette: ['#4A0E17', '#B45309', '#D97706', '#FFFBEB'],
+            type_roles: ['Headings: Playfair Display / Space Grotesk', 'Body: Inter'],
+            shape_language: 'Warm architectural curves, linen texture borders, and refined table card outlines',
+            symbol_language: 'Stemware, table silhouettes, brass reservation markers, and subtle candlelight glows',
+            composition_layout: 'Warm, editorial dining room photography paired with a clean reservation calendar grid',
+            imagery_direction: 'Candlelit dining tables, chef plating in open kitchen, and welcoming front-of-house staff',
+            concepts_to_avoid: ['Cheesy cartoon chef hats', 'Cold corporate SaaS screenshots'],
+            rationale_linking_to_audience_and_positioning: 'Evokes dining intimacy and culinary craft while delivering contemporary operational reliability',
             concept_disclaimer: 'AI-generated visual concept / design direction — not production-ready artwork.',
           });
         }
@@ -638,6 +1212,49 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
 
       // ─── 6. VOICE & MESSAGING STAGE ────────────────────────────────────────
       if ('sample_messages' in shape) {
+        if (hasScenario) {
+          if (isWorkingEngineersScenario) {
+            return JSON.stringify({
+              voice_description: 'Concise, technically precise, and pragmatic with zero marketing puffery',
+              tone_characteristics: ['Technical', 'Direct', 'Unflinching'],
+              do_list: ['Speak directly in terms of latency, throughput, and system architecture', 'Cite verified stack traces and benchmarks'],
+              dont_list: ['Do not use empty marketing buzzwords like "magic" or "supercharge"', 'Do not treat engineers like beginners'],
+              sample_messages: [
+                { message: 'Identified circular dependency in auth-service module. Refactoring plan generated.', explanation: 'IDE diagnostic alert' },
+                { message: 'Legacy migration complete across 142 microservices with zero schema regressions.', explanation: 'Deployment notification' },
+                { message: 'Architectural reasoning engineered for systems where failure is not an option.', explanation: 'Enterprise homepage hero' },
+              ],
+              critic_findings: [],
+            });
+          }
+          if (isEnterpriseB2BScenario) {
+            return JSON.stringify({
+              voice_description: 'Institutional, reliable, and compliant',
+              tone_characteristics: ['Authoritative', 'Structured', 'Transparent'],
+              do_list: ['Quote bonded SLAs and regulatory certifications', 'Provide audit-ready volume records'],
+              dont_list: ['Do not use casual consumer slang', 'Do not make unbonded fulfillment promises'],
+              sample_messages: [
+                { message: 'Enterprise purchase order #9021 confirmed with guaranteed 48-hour bonded dock delivery.', explanation: 'Procurement confirmation' },
+                { message: 'Quarterly supply contract executed under ISO-certified compliance standards.', explanation: 'Institutional dashboard notice' },
+                { message: 'Consolidated B2B distribution ledger reconciled across all regional facilities.', explanation: 'Executive report summary' },
+              ],
+              critic_findings: [],
+            });
+          }
+          return JSON.stringify({
+            voice_description: `Adaptive, decisive, and aligned with premise: "${scenarioOverride?.slice(0, 30)}"`,
+            tone_characteristics: ['Decisive', 'Adaptive', 'Direct'],
+            do_list: ['Address the pivoted scenario needs directly', 'Provide concrete next steps'],
+            dont_list: ['Do not revert to old assumptions', 'Do not hedge on strategic stance'],
+            sample_messages: [
+              { message: `Engineered specifically to solve core friction under ${scenarioOverride?.slice(0, 30)}.`, explanation: 'Homepage value statement' },
+              { message: 'Your adapted workflow has been calibrated for optimal velocity.', explanation: 'System notification' },
+              { message: 'Join the vanguard operating on next-generation principles.', explanation: 'Onboarding welcome' },
+            ],
+            critic_findings: [],
+          });
+        }
+
         if (isFarmersDirect) {
           return JSON.stringify({
             voice_description: 'Grounded, transparent, and community-proud with deep respect for agriculture',
@@ -648,6 +1265,21 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
               { message: 'Harvested at 6 AM in the valley. On your dinner table by 6 PM.', explanation: 'Homepage hero headline' },
               { message: 'Meet Farmer David: 3rd-generation heirloom tomato grower in your county.', explanation: 'Producer profile card' },
               { message: 'Your seasonal farm basket has been packed fresh from the morning pick.', explanation: 'Delivery notification' },
+            ],
+            critic_findings: [],
+          });
+        }
+
+        if (isRestaurantReservation) {
+          return JSON.stringify({
+            voice_description: 'Warm, gracious, and operationally sharp with deep respect for the hospitality trade',
+            tone_characteristics: ['Gracious', 'Decisive', 'Culinary-fluent'],
+            do_list: ['Treat every cover as a sacred guest experience', 'Speak the language of professional kitchen service'],
+            dont_list: ['Do not treat dining guests as mere conversion numbers', 'Do not use sterile corporate tech jargon'],
+            sample_messages: [
+              { message: 'Tonight’s 7:30 PM service is fully booked across all 18 tables.', explanation: 'Service summary report' },
+              { message: 'Your table for four at Bistro Laurent is confirmed. We look forward to welcoming you.', explanation: 'Guest confirmation SMS' },
+              { message: 'Zero per-cover commissions. 100% of guest revenue stays in your kitchen.', explanation: 'Marketing hero headline' },
             ],
             critic_findings: [],
           });
@@ -700,10 +1332,40 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
 
       // ─── 7. LAUNCH PREP STAGE ──────────────────────────────────────────────
       if ('landing_headline' in shape) {
+        if (hasScenario) {
+          if (isWorkingEngineersScenario) {
+            return JSON.stringify({
+              landing_headline: 'Unravel legacy complexity in minutes. The architectural code intelligence engine for senior engineering teams.',
+              social_launch_post: 'We are thrilled to launch DevEngine: the AI code intelligence engine built specifically for working software engineers to master legacy systems and refactor with verified confidence.',
+              critic_findings: [],
+            });
+          }
+          if (isEnterpriseB2BScenario) {
+            return JSON.stringify({
+              landing_headline: 'Enterprise procurement made predictable. Direct bulk volume contracts with guaranteed fulfillment SLAs.',
+              social_launch_post: 'Announcing OmniSupply: institutional volume procurement connecting verified regional producers directly with commercial buyers under bonded fulfillment guarantees.',
+              critic_findings: [],
+            });
+          }
+          return JSON.stringify({
+            landing_headline: `The new benchmark in ${scenarioOverride?.slice(0, 40)}.`,
+            social_launch_post: `We are live! Discover dedicated, high-velocity solutions purpose-built for ${scenarioOverride?.slice(0, 45)} with ${dynamicName}.`,
+            critic_findings: [],
+          });
+        }
+
         if (isFarmersDirect) {
           return JSON.stringify({
             landing_headline: 'Farm-fresh produce delivered within 24 hours of harvest. Support local growers directly.',
             social_launch_post: 'We are officially live! Skip grocery warehouse storage and enjoy produce harvested this morning directly from local family farms with HarvestDirect.',
+            critic_findings: [],
+          });
+        }
+
+        if (isRestaurantReservation) {
+          return JSON.stringify({
+            landing_headline: 'Fill every table tonight with zero commission fees. The direct reservation platform for independent dining.',
+            social_launch_post: 'We are officially live! TableFlow is giving independent restaurants their margins and guest relationships back. Zero per-cover fees, automated SMS no-show protection, and direct booking in seconds.',
             critic_findings: [],
           });
         }
@@ -732,24 +1394,9 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
         });
       }
     }
-
-    if ((schema as any)._def?.typeName === 'ZodArray') {
-      return '[]';
-    }
   }
 
-  if (
-    prompt.includes('Critic AI') ||
-    prompt.includes('critic_findings') ||
-    prompt.includes('Audit') ||
-    prompt.includes('audit') ||
-    prompt.includes('Holistic') ||
-    prompt.includes('Consistency')
-  ) {
-    return '[]';
-  }
-
-  return '{}';
+  return generateMockCriticFindings(prompt);
 }
 
 export class MockAIProvider implements AIProvider {
