@@ -7,6 +7,24 @@ export const scenarioProbeRouter = Router();
 const scenarioService = new ScenarioProbeService();
 
 /**
+ * Normalizes input payload into a complete, safe SharedContext structure.
+ */
+function normalizeScenarioContext(payload: any): SharedContext {
+  const rawCtx = payload.context || payload || {};
+  return {
+    project_id: rawCtx.project_id || payload.project_id || `proj_${Date.now()}`,
+    user_facts: rawCtx.user_facts || payload.user_facts || {},
+    ai_assumptions: rawCtx.ai_assumptions || {},
+    approved_decisions: rawCtx.approved_decisions || payload.approved_decisions || {},
+    stage_drafts: rawCtx.stage_drafts || {},
+    critic_findings: Array.isArray(rawCtx.critic_findings) ? rawCtx.critic_findings : [],
+    consistency_findings: Array.isArray(rawCtx.consistency_findings) ? rawCtx.consistency_findings : [],
+    scenario_overrides: Array.isArray(rawCtx.scenario_overrides) ? rawCtx.scenario_overrides : [],
+    revision_log: Array.isArray(rawCtx.revision_log) ? rawCtx.revision_log : [],
+  };
+}
+
+/**
  * Handles Scenario Probe execution for both /api/scenario-probe/run and /api/scenario-probe.
  * Generates an isolated scenario branch for affected fields with Strategist and Critic.
  */
@@ -24,18 +42,7 @@ async function handleScenarioRun(req: Request, res: Response) {
   }
 
   // Support both full SharedContext and approved_decisions payload defensively
-  const rawCtx = payload.context || {};
-  const context: SharedContext = {
-    project_id: rawCtx.project_id || payload.project_id || `proj_${Date.now()}`,
-    user_facts: rawCtx.user_facts || payload.user_facts || {},
-    ai_assumptions: rawCtx.ai_assumptions || {},
-    approved_decisions: rawCtx.approved_decisions || payload.approved_decisions || {},
-    stage_drafts: rawCtx.stage_drafts || {},
-    critic_findings: Array.isArray(rawCtx.critic_findings) ? rawCtx.critic_findings : [],
-    consistency_findings: Array.isArray(rawCtx.consistency_findings) ? rawCtx.consistency_findings : [],
-    scenario_overrides: Array.isArray(rawCtx.scenario_overrides) ? rawCtx.scenario_overrides : [],
-    revision_log: Array.isArray(rawCtx.revision_log) ? rawCtx.revision_log : [],
-  };
+  const context = normalizeScenarioContext(payload);
 
   // If called without approved_decisions for the trigger stage (e.g. standalone API probe test),
   // seed a baseline approved decision so that the probe can explore downstream impacts
@@ -130,9 +137,9 @@ scenarioProbeRouter.post('/scenario-probe', handleScenarioRun);
  * Marks the scenario decision as 'keep_original' leaving approved_decisions untouched.
  */
 scenarioProbeRouter.post('/scenario-probe/keep', (req: Request, res: Response) => {
-  const { context, scenario_id } = req.body || {};
+  const { context: rawContext, scenario_id } = req.body || {};
 
-  if (!context || !scenario_id) {
+  if (!rawContext || !scenario_id) {
     return res.status(400).json({
       error_type: 'invalid_request',
       message: "Request payload must include 'context' and 'scenario_id'.",
@@ -140,6 +147,7 @@ scenarioProbeRouter.post('/scenario-probe/keep', (req: Request, res: Response) =
   }
 
   try {
+    const context = normalizeScenarioContext(req.body);
     const updatedContext = scenarioService.keepOriginal(context, scenario_id);
     return res.status(200).json({ context: updatedContext });
   } catch (err: unknown) {
@@ -156,9 +164,9 @@ scenarioProbeRouter.post('/scenario-probe/keep', (req: Request, res: Response) =
  * Accepts scenario branch drafts and applies them to approved_decisions with revision logging.
  */
 scenarioProbeRouter.post('/scenario-probe/accept', (req: Request, res: Response) => {
-  const { context, scenario_id, stage_filter } = req.body || {};
+  const { context: rawContext, scenario_id, stage_filter } = req.body || {};
 
-  if (!context || !scenario_id) {
+  if (!rawContext || !scenario_id) {
     return res.status(400).json({
       error_type: 'invalid_request',
       message: "Request payload must include 'context' and 'scenario_id'.",
@@ -166,6 +174,7 @@ scenarioProbeRouter.post('/scenario-probe/accept', (req: Request, res: Response)
   }
 
   try {
+    const context = normalizeScenarioContext(req.body);
     const updatedContext = scenarioService.acceptBranch(context, scenario_id, stage_filter);
     return res.status(200).json({ context: updatedContext });
   } catch (err: unknown) {
@@ -182,9 +191,9 @@ scenarioProbeRouter.post('/scenario-probe/accept', (req: Request, res: Response)
  * Accepts an edited version of a branch draft and updates approved_decisions with revision logging.
  */
 scenarioProbeRouter.post('/scenario-probe/edit', (req: Request, res: Response) => {
-  const { context, scenario_id, stage, edited_content } = req.body || {};
+  const { context: rawContext, scenario_id, stage, edited_content } = req.body || {};
 
-  if (!context || !scenario_id || !stage || !edited_content) {
+  if (!rawContext || !scenario_id || !stage || !edited_content) {
     return res.status(400).json({
       error_type: 'invalid_request',
       message: "Request payload must include 'context', 'scenario_id', 'stage', and 'edited_content'.",
@@ -192,6 +201,7 @@ scenarioProbeRouter.post('/scenario-probe/edit', (req: Request, res: Response) =
   }
 
   try {
+    const context = normalizeScenarioContext(req.body);
     const updatedContext = scenarioService.editBranch(context, scenario_id, stage, edited_content);
     return res.status(200).json({ context: updatedContext });
   } catch (err: unknown) {

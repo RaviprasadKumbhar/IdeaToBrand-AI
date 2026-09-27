@@ -47,7 +47,8 @@ export function writeApprovedDecision(
   cause: RevisionLogCause,
   causeId: string
 ): SharedContext {
-  const previousValue = ctx.approved_decisions[stage]?.content ?? null;
+  const safeApprovedDecisions = ctx.approved_decisions || {};
+  const previousValue = safeApprovedDecisions[stage]?.content ?? null;
   const timestamp = new Date().toISOString();
   const revisionId = generateId("rev");
 
@@ -69,18 +70,21 @@ export function writeApprovedDecision(
     source: mapCauseToSource(cause),
   };
 
+  const safeStageDrafts = ctx.stage_drafts || {};
+  const safeRevisionLog = Array.isArray(ctx.revision_log) ? ctx.revision_log : [];
+
   return {
     ...ctx,
     approved_decisions: {
-      ...ctx.approved_decisions,
+      ...safeApprovedDecisions,
       [stage]: newApprovedDecision,
     },
     // Working draft for this stage is cleared/superseded once approved
     stage_drafts: {
-      ...ctx.stage_drafts,
+      ...safeStageDrafts,
       [stage]: undefined,
     },
-    revision_log: [...ctx.revision_log, revisionEntry],
+    revision_log: [...safeRevisionLog, revisionEntry],
   };
 }
 
@@ -92,17 +96,22 @@ export function acceptScenarioBranch(
   ctx: SharedContext,
   scenarioId: string
 ): SharedContext {
-  const scenarioIndex = ctx.scenario_overrides.findIndex((s) => s.id === scenarioId);
+  const safeScenarioOverrides = Array.isArray(ctx.scenario_overrides) ? ctx.scenario_overrides : [];
+  const scenarioIndex = safeScenarioOverrides.findIndex((s) => s.id === scenarioId);
   if (scenarioIndex === -1) {
     throw new Error(`ScenarioOverride with id "${scenarioId}" not found in SharedContext.`);
   }
 
-  const scenario = ctx.scenario_overrides[scenarioIndex];
+  const scenario = safeScenarioOverrides[scenarioIndex];
   if (!scenario.branch_drafts || scenario.branch_drafts.length === 0) {
     throw new Error(`ScenarioOverride "${scenarioId}" has no branch drafts to accept.`);
   }
 
-  let updatedContext: SharedContext = { ...ctx };
+  let updatedContext: SharedContext = {
+    ...ctx,
+    scenario_overrides: safeScenarioOverrides,
+    revision_log: Array.isArray(ctx.revision_log) ? ctx.revision_log : [],
+  };
 
   // Sequentially apply each branch draft through the single writeApprovedDecision choke point
   for (const draft of scenario.branch_drafts) {
@@ -116,7 +125,7 @@ export function acceptScenarioBranch(
   }
 
   // Update scenario decision status to 'accept_branch'
-  const updatedScenarios = [...updatedContext.scenario_overrides];
+  const updatedScenarios = [...(updatedContext.scenario_overrides || [])];
   updatedScenarios[scenarioIndex] = {
     ...scenario,
     decision: "accept_branch",

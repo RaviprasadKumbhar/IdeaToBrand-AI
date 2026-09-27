@@ -148,6 +148,7 @@ Respond with valid JSON:
 
     const finalContent: DiscoveryContent = {
       ...execution.data,
+      brand_concept: execution.data.brand_concept || input.business_description || input.idea_text,
       known_facts: mergedKnownFacts,
     };
 
