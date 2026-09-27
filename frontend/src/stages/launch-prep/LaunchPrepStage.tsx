@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useFOILStore } from '../../store/foilStore';
 import { StageScreen } from '../../components/StageScreen';
 import { EditableField } from '../../components/EditableField';
@@ -11,6 +12,7 @@ export interface LaunchPrepContent {
 }
 
 export function LaunchPrepStage() {
+  const navigate = useNavigate();
   const store = useFOILStore();
   const ui = store.uiStates['launch_prep'];
   const draft = store.ctx.stage_drafts['launch_prep'];
@@ -50,7 +52,7 @@ export function LaunchPrepStage() {
   }
 
   function handleApprove() {
-    const c = draft?.content;
+    const c = draft?.content ?? approved?.content;
     if (!c) return;
     store.writeApprovedDecision('launch_prep', c, 'user_edit', uuid());
   }
@@ -120,6 +122,21 @@ export function LaunchPrepStage() {
             <span aria-hidden="true">ℹ</span>
             <span>Approving Launch Prep unlocks the Holistic Consistency Audit (Stage 8).</span>
           </div>
+
+          {(ui.approval_state === 'approved' || Boolean(approved?.content)) && (
+            <div className="pt-2">
+              <button
+                id="btn-proceed-audit"
+                onClick={() => {
+                  store.setCurrentStage('consistency_audit');
+                  navigate('/consistency-audit');
+                }}
+                className="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2 shadow-sm font-semibold"
+              >
+                Proceed to Holistic Consistency Audit →
+              </button>
+            </div>
+          )}
         </div>
       )}
     </StageScreen>

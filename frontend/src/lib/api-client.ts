@@ -295,6 +295,15 @@ export async function runScenarioProbe(
           });
         }
       }
+    } else if (item.branch_draft?.content && !item.original_content) {
+      for (const [key, val] of Object.entries(item.branch_draft.content)) {
+        changedFields.push({
+          stage: item.stage,
+          field_name: key,
+          original_value: '(none - ungenerated)',
+          branch_value: typeof val === 'string' ? val : JSON.stringify(val),
+        });
+      }
     }
     if (item.critic_findings) {
       allFindings.push(...item.critic_findings);
@@ -308,6 +317,8 @@ export async function runScenarioProbe(
     affected_stages: override.affected_fields || [triggeredFrom],
     changed_fields: changedFields,
     branch_critic_findings: allFindings,
+    comparisons: result.comparisons,
+    scenario_override: result.scenario_override || override,
   };
 }
 

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFOILStore } from '../../store/foilStore';
 import { runConsistencyAudit } from '../../lib/api-client';
 import { LoadingState } from '../../components/LoadingState';
@@ -116,6 +117,7 @@ export function ConsistencyAuditStage() {
   const [error, setError] = useState<string | null>(null);
   const [hasRun, setHasRun] = useState(store.ctx.consistency_findings.length > 0);
 
+  const navigate = useNavigate();
   const findings = store.ctx.consistency_findings;
   const launchApproved = !!store.ctx.approved_decisions['launch_prep'];
   const unresolvedFindings = findings.filter(f => f.user_action === null);
@@ -155,15 +157,27 @@ export function ConsistencyAuditStage() {
 
       {!launchApproved && (
         <div
-          className="p-4 bg-amber-50 border border-amber-200 rounded-md flex items-start gap-2"
+          className="p-4 bg-amber-50 border border-amber-200 rounded-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
           role="alert"
           aria-live="polite"
         >
-          <span className="text-amber-600 mt-0.5" aria-hidden="true">⚠</span>
-          <p className="text-sm text-amber-800">
-            <strong>Launch Prep must be approved</strong> before the Consistency Audit can run.
-            Complete and approve Stage 7 first.
-          </p>
+          <div className="flex items-start gap-2">
+            <span className="text-amber-600 mt-0.5" aria-hidden="true">⚠</span>
+            <p className="text-sm text-amber-800">
+              <strong>Launch Prep must be approved</strong> before the Consistency Audit can run.
+              Complete and approve Stage 7 first.
+            </p>
+          </div>
+          <button
+            id="btn-goto-launch-prep"
+            onClick={() => {
+              store.setCurrentStage('launch_prep');
+              navigate('/launch-prep');
+            }}
+            className="btn-primary text-xs shrink-0 whitespace-nowrap"
+          >
+            Go to Launch Prep →
+          </button>
         </div>
       )}
 
@@ -227,6 +241,37 @@ export function ConsistencyAuditStage() {
               )}
             </div>
           </div>
+
+          {allResolved && (
+            <div className="card p-5 bg-green-50 border border-green-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <p className="font-bold text-green-900 text-sm">Audit Complete &amp; Brand System Consistent</p>
+                <p className="text-xs text-green-700 mt-0.5">All conflicts have been addressed. You can now finalize your Brand Kit and Export.</p>
+              </div>
+              <button
+                id="btn-approve-audit-proceed"
+                onClick={() => {
+                  if (!store.ctx.approved_decisions['consistency_audit']) {
+                    store.writeApprovedDecision(
+                      'consistency_audit',
+                      {
+                        resolved: true,
+                        findings_count: findings.length,
+                        timestamp: new Date().toISOString(),
+                      },
+                      'user_edit',
+                      uuid()
+                    );
+                  }
+                  store.setCurrentStage('kit_export');
+                  navigate('/export');
+                }}
+                className="btn-primary text-xs sm:text-sm py-2.5 px-5 font-semibold shrink-0 shadow-sm"
+              >
+                Approve Audit &amp; Proceed to Export →
+              </button>
+            </div>
+          )}
 
           {/* ── Export block ─────────────────────────────────────────────────── */}
           {exportBlocked && (

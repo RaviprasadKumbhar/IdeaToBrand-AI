@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFOILStore } from '../../store/foilStore';
 import { runScenarioProbe } from '../../lib/api-client';
 import type { ScenarioProbeResult, ScenarioBranchField } from '../../lib/api-client';
@@ -17,6 +18,37 @@ const STAGE_LABELS: Partial<Record<StageName, string>> = {
   launch_prep: 'Launch Prep',
 };
 
+function formatValueDisplay(val: string): React.ReactNode {
+  if (!val || val === '(none - ungenerated)') return <span className="text-ink-400 italic">{val || '—'}</span>;
+  try {
+    const parsed = JSON.parse(val);
+    if (Array.isArray(parsed)) {
+      return (
+        <ul className="list-disc list-inside space-y-1 text-xs">
+          {parsed.map((item, idx) => (
+            <li key={idx}>{typeof item === 'object' ? JSON.stringify(item) : String(item)}</li>
+          ))}
+        </ul>
+      );
+    }
+    if (typeof parsed === 'object' && parsed !== null) {
+      return (
+        <div className="space-y-1.5 text-xs font-mono bg-surface-100 p-2 rounded">
+          {Object.entries(parsed).map(([k, v]) => (
+            <div key={k}>
+              <span className="font-semibold text-ink-900">{k.replace(/_/g, ' ')}: </span>
+              <span className="text-ink-700">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+  } catch {
+    // raw string
+  }
+  return val;
+}
+
 function BranchFieldRow({ field }: { field: ScenarioBranchField }) {
   return (
     <div
@@ -31,11 +63,11 @@ function BranchFieldRow({ field }: { field: ScenarioBranchField }) {
       <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border">
         <div className="p-4" aria-label="Original value">
           <p className="text-[10px] font-bold uppercase tracking-wider text-ink-400 mb-1.5">Original</p>
-          <p className="text-sm text-ink-700 leading-relaxed">{field.original_value}</p>
+          <div className="text-sm text-ink-700 leading-relaxed">{formatValueDisplay(field.original_value)}</div>
         </div>
         <div className="p-4 bg-accent-100/40" aria-label="Branch value">
           <p className="text-[10px] font-bold uppercase tracking-wider text-accent-600 mb-1.5">Branch (What-if)</p>
-          <p className="text-sm text-ink-950 font-medium leading-relaxed">{field.branch_value}</p>
+          <div className="text-sm text-ink-950 font-medium leading-relaxed">{formatValueDisplay(field.branch_value)}</div>
         </div>
       </div>
     </div>
@@ -45,6 +77,7 @@ function BranchFieldRow({ field }: { field: ScenarioBranchField }) {
 type ProbePhase = 'input' | 'loading' | 'results' | 'error';
 
 export function ScenarioProbePage() {
+  const navigate = useNavigate();
   const store = useFOILStore();
 
   const approvedStages = Object.keys(store.ctx.approved_decisions) as StageName[];
@@ -281,16 +314,29 @@ export function ScenarioProbePage() {
 
           {isDecided && (
             <div
-              className={`flex items-center gap-3 p-4 rounded-md border ${accepted ? 'bg-green-50 border-green-200' : 'bg-surface-100 border-border'}`}
+              className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-md border ${accepted ? 'bg-green-50 border-green-200' : 'bg-surface-100 border-border'}`}
               role="status"
               aria-live="polite"
             >
-              <span className={accepted ? 'text-green-600 font-bold' : 'text-ink-500'}>
-                {accepted ? '✓ Branch accepted — approved decisions updated' : 'Original kept — no changes made'}
+              <span className={accepted ? 'text-green-700 font-bold text-sm' : 'text-ink-600 font-medium text-sm'}>
+                {accepted ? '✓ Branch accepted — approved decisions updated with new what-if strategy' : 'Original kept — no changes made to approved decisions'}
               </span>
-              <button onClick={handleNewProbe} className="btn-secondary text-xs ml-auto">
-                New Scenario
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  id="btn-return-workspace"
+                  onClick={() => navigate('/workspace')}
+                  className="btn-primary text-xs py-2 px-3"
+                >
+                  Return to Workspace →
+                </button>
+                <button
+                  id="btn-new-scenario"
+                  onClick={handleNewProbe}
+                  className="btn-secondary text-xs py-2 px-3"
+                >
+                  New Scenario
+                </button>
+              </div>
             </div>
           )}
 

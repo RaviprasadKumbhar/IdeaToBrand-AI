@@ -55,11 +55,19 @@ const ALL_STAGES: StageName[] = [
   'kit_export',
 ];
 
-function createInitialUIStates(): Record<StageName, StageUIState> {
+function createInitialUIStates(ctx?: SharedContext | null): Record<StageName, StageUIState> {
   return Object.fromEntries(
-    ALL_STAGES.map((s) => [s, { approval_state: 'draft' as ApprovalState, is_loading: false, error: null }])
+    ALL_STAGES.map((s) => {
+      const decision = ctx?.approved_decisions?.[s];
+      let state: ApprovalState = 'draft';
+      if (decision) {
+        state = decision.state === 'needs_review' ? 'needs_review' : 'approved';
+      }
+      return [s, { approval_state: state, is_loading: false, error: null }];
+    })
   ) as Record<StageName, StageUIState>;
 }
+
 
 // ─── Persistence helpers ─────────────────────────────────────────────────────
 
@@ -174,7 +182,7 @@ export const useFOILStore = create<FOILStore>((set, get) => {
 
   return {
     ctx: savedCtx ?? createInitialContext(),
-    uiStates: createInitialUIStates(),
+    uiStates: createInitialUIStates(savedCtx),
     ideaInput: null,
     currentStage: 'idea-input',
 
@@ -391,6 +399,32 @@ export const useFOILStore = create<FOILStore>((set, get) => {
     },
 
     actOnConsistencyFinding: (id, action) => {
+      const finding = get().ctx.consistency_findings.find((f) => f.id === id);
+      if (finding && action === 'accept') {
+        const targetStage = finding.fields_in_conflict[0]?.split('.')[0] as StageName;
+        const currentApproved = get().ctx.approved_decisions[targetStage];
+        if (targetStage && currentApproved?.content) {
+          const fieldName = finding.fields_in_conflict[0]?.split('.')[1] || 'resolution';
+          const existingFieldValue = (currentApproved.content as Record<string, unknown>)[fieldName];
+          const newFieldValue = Array.isArray(existingFieldValue)
+            ? [finding.sharper_alternative, ...existingFieldValue.slice(1)]
+            : finding.sharper_alternative;
+
+          const updatedStageContent = {
+            ...currentApproved.content,
+            [fieldName]: newFieldValue,
+            audit_resolved_alternative: finding.sharper_alternative,
+          };
+
+          get().writeApprovedDecision(
+            targetStage,
+            updatedStageContent,
+            'consistency_finding_accept',
+            id
+          );
+        }
+      }
+
       set((state) => {
         const updatedCtx: SharedContext = {
           ...state.ctx,
@@ -405,9 +439,19 @@ export const useFOILStore = create<FOILStore>((set, get) => {
     },
 
     loadProjectIntoStore: (project) => {
+      const initialUI = project.ui_states || createInitialUIStates(project.context);
+      for (const s of ALL_STAGES) {
+        if (project.context?.approved_decisions?.[s] && (!initialUI[s] || initialUI[s].approval_state === 'draft')) {
+          initialUI[s] = {
+            approval_state: (project.context.approved_decisions[s].state === 'needs_review' ? 'needs_review' : 'approved') as ApprovalState,
+            is_loading: false,
+            error: null,
+          };
+        }
+      }
       set({
         ctx: project.context,
-        uiStates: project.ui_states || createInitialUIStates(),
+        uiStates: initialUI,
         currentStage: project.current_stage || 'discovery',
       });
       persistToSession(project.context);
