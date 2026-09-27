@@ -237,40 +237,43 @@ export function ChatWorkspace() {
     setIsGenerating(true);
 
     try {
-      const isInitialConcept = !ctx.user_facts.business_description;
+      const trimmedText = textToSend.trim();
+      const isNewConceptPhrase = /^(?:i want to|we want to|my idea is to|my idea is|we are building|i am building|a marketplace|marketplace for|software for|platform for|an ai tutor|ai tutor|an app for|building a)/i.test(trimmedText);
+      const isInitialConcept = !ctx.user_facts.business_description || isNewConceptPhrase;
 
       const currentFacts = {
         ...ctx.user_facts,
-        business_description: isInitialConcept ? textToSend : String(ctx.user_facts.business_description || textToSend),
+        business_description: isInitialConcept ? trimmedText : String(ctx.user_facts.business_description || trimmedText),
         ...(newAttachments.length > 0 ? { constraints: `Attached files: ${newAttachments.map(a => a.name).join(', ')}` } : {}),
       };
 
       if (isInitialConcept) {
         await startNewProject(currentFacts);
 
-        // Derive initial grounded acknowledgment based on domain
-        const lower = textToSend.toLowerCase();
-        let inferredAudience = 'Target audience to be isolated in Discovery';
-        let inferredProblem = 'Core problem and frictions to be defined in Discovery';
-        let inferredOpportunity = 'Differentiated brand strategy and positioning';
+        // Derive grounded acknowledgment based on user input
+        const cleanedText = trimmedText
+          .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building)\s+(?:build|create|launch|start|develop|make|offer|sell|provide|design)?\s*/i, '')
+          .trim();
+        const audMatch = cleanedText.match(/\b(?:for|serving|targeted at|helping|connecting|enabling|empowering|assisting)\s+([a-zA-Z\s]{3,40}?)(?:\s+(?:to\s+[a-z]+|manage|sell|prepare|find|build|scale|grow|automate|book|order|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
+        const inferredAudience = audMatch
+          ? audMatch[1].trim()
+          : /farmer|agri/i.test(trimmedText)
+          ? 'Small independent farmers and local households'
+          : /student|exam/i.test(trimmedText)
+          ? 'Engineering students and academic candidates'
+          : /restaurant|reservation/i.test(trimmedText)
+          ? 'Independent restaurants, dining rooms, and guests'
+          : `Target audience seeking dedicated solutions for ${cleanedText.slice(0, 40)}`;
 
-        if (/farmer|agri|crop|produce|harvest|rural/i.test(lower)) {
-          inferredAudience = 'Small independent farmers, local growers, and direct retail consumers';
-          inferredProblem = 'Intermediary middlemen fees and lack of direct consumer access';
-          inferredOpportunity = 'Direct farm-to-table platform with transparent fair pricing';
-        } else if (/student|study|exam|course|academic|tutor/i.test(lower)) {
-          inferredAudience = 'Students, academic learners, and exam candidates';
-          inferredProblem = 'Complex coursework comprehension, study fatigue, and fragmented materials';
-          inferredOpportunity = 'AI-powered personalized study assistance and concept mastering';
-        } else if (/appointment|booking|schedul|calendar|salon|clinic/i.test(lower)) {
-          inferredAudience = 'Local service businesses, clinics, salons, and their clients';
-          inferredProblem = 'Scheduling friction, customer no-shows, and manual booking admin';
-          inferredOpportunity = 'Automated direct booking, client reminders, and schedule management';
-        } else {
-          inferredAudience = `Target customers seeking a dedicated solution for ${textToSend.slice(0, 45)}`;
-          inferredProblem = `Customer pain points and market friction in ${textToSend.slice(0, 35)}`;
-          inferredOpportunity = `Modern, customer-centric brand providing direct value`;
-        }
+        const inferredProblem = /farmer|agri/i.test(trimmedText)
+          ? 'Intermediary middlemen fees and lack of direct consumer access'
+          : /student|exam/i.test(trimmedText)
+          ? 'Complex coursework comprehension, study fatigue, and fragmented materials'
+          : /restaurant|reservation/i.test(trimmedText)
+          ? 'Table no-shows and high third-party per-cover commissions'
+          : `Core customer frictions and market inefficiency in ${cleanedText.slice(0, 40)}`;
+
+        const inferredOpportunity = `Differentiated brand strategy and direct value delivery for ${inferredAudience}`;
 
         const assistantMsg: ChatMessage = {
           id: nextId('assistant'),
@@ -278,7 +281,10 @@ export function ChatWorkspace() {
           text: "Got it. I'll use this idea as the foundation for your brand.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           ideaAcknowledgment: {
-            idea: textToSend,
+            idea: trimmedText,
+            audience: inferredAudience,
+            problem: inferredProblem,
+            opportunity: inferredOpportunity,
           },
           showDiscoveryCTA: true,
         };

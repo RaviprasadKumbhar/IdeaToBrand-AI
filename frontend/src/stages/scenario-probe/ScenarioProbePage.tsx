@@ -47,16 +47,20 @@ type ProbePhase = 'input' | 'loading' | 'results' | 'error';
 export function ScenarioProbePage() {
   const store = useFOILStore();
 
+  const approvedStages = Object.keys(store.ctx.approved_decisions) as StageName[];
+  const initialTrigger: StageName = approvedStages.includes('positioning')
+    ? 'positioning'
+    : (approvedStages[0] || 'discovery');
+
   const [phase, setPhase] = useState<ProbePhase>('input');
   const [whatIfInput, setWhatIfInput] = useState('');
-  const [triggeredFrom, setTriggeredFrom] = useState<StageName>('positioning');
+  const [triggeredFrom, setTriggeredFrom] = useState<StageName>(initialTrigger);
   const [result, setResult] = useState<ScenarioProbeResult | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [branchFindings, setBranchFindings] = useState<CriticFinding[]>([]);
   const [accepted, setAccepted] = useState(false);
   const [kept, setKept] = useState(false);
 
-  const approvedStages = Object.keys(store.ctx.approved_decisions) as StageName[];
   const inputTooShort = whatIfInput.trim().length < 10;
 
   async function handleRunProbe() {
@@ -85,19 +89,38 @@ export function ScenarioProbePage() {
     if (!result || accepted) return;
     const causeId = uuid();
 
-    result.changed_fields.forEach(field => {
-      const stageApproved = store.ctx.approved_decisions[field.stage];
-      if (!stageApproved) return;
-      const updatedContent = { ...stageApproved.content, [field.field_name]: field.branch_value };
-      store.writeApprovedDecision(field.stage, updatedContent, 'scenario_accept', causeId);
-    });
+    const draftsToApply =
+      result.scenario_override?.branch_drafts ||
+      result.comparisons?.map(c => c.branch_draft).filter(Boolean) ||
+      [];
+
+    if (draftsToApply.length > 0) {
+      for (const draft of draftsToApply) {
+        store.writeApprovedDecision(draft.stage, draft.content, 'scenario_accept', causeId);
+      }
+    } else {
+      result.changed_fields.forEach(field => {
+        const stageApproved = store.ctx.approved_decisions[field.stage];
+        let parsedVal: unknown = field.branch_value;
+        try { parsedVal = JSON.parse(field.branch_value); } catch { /* keep string */ }
+        const updatedContent = stageApproved
+          ? { ...stageApproved.content, [field.field_name]: parsedVal }
+          : { [field.field_name]: parsedVal };
+        store.writeApprovedDecision(field.stage, updatedContent, 'scenario_accept', causeId);
+      });
+    }
 
     store.addScenarioOverride({
       id: result.scenario_id,
       triggered_from_stage: result.triggered_from_stage,
       what_if_input: result.what_if_input,
       affected_fields: result.affected_stages,
-      branch_drafts: [],
+      branch_drafts: draftsToApply.map(d => ({
+        stage: d.stage,
+        content: d.content,
+        generated_at: d.generated_at,
+        attempt: d.attempt,
+      })),
       decision: 'accept_branch',
       created_at: new Date().toISOString(),
     });
@@ -108,12 +131,22 @@ export function ScenarioProbePage() {
 
   function handleKeepOriginal() {
     if (!result || kept) return;
+    const draftsToApply =
+      result.scenario_override?.branch_drafts ||
+      result.comparisons?.map(c => c.branch_draft).filter(Boolean) ||
+      [];
+
     store.addScenarioOverride({
       id: result.scenario_id,
       triggered_from_stage: result.triggered_from_stage,
       what_if_input: result.what_if_input,
       affected_fields: result.affected_stages,
-      branch_drafts: [],
+      branch_drafts: draftsToApply.map(d => ({
+        stage: d.stage,
+        content: d.content,
+        generated_at: d.generated_at,
+        attempt: d.attempt,
+      })),
       decision: 'keep_original',
       created_at: new Date().toISOString(),
     });
@@ -173,7 +206,7 @@ export function ScenarioProbePage() {
                 </option>
               ))}
               {approvedStages.length === 0 && (
-                <option value="positioning">Positioning (no approvals yet)</option>
+                <option value="discovery">Discovery (Strategic Foundation)</option>
               )}
             </select>
           </div>
