@@ -8,6 +8,7 @@ import {
   AIProviderError,
   extractJSONFromText,
 } from '../provider.js';
+import { generateContextualBrandPlan } from '../contextualEngine.js';
 
 export interface MockAIProviderOptions {
   mockResponseGenerator?: (prompt: string) => string;
@@ -22,10 +23,18 @@ function extractContextFromPrompt(prompt: string) {
   let audience = '';
   const facts: string[] = [];
 
+  // Match INKLOOM Unified Brand Plan prompt pattern
+  const inkloomIdeaMatch = prompt.match(/(?:=== USER IDEA ===\s*\n)?(?:Raw Startup )?Idea:\s*"([^"\n]+)"/i);
+  if (inkloomIdeaMatch && inkloomIdeaMatch[1] && inkloomIdeaMatch[1].trim() && !inkloomIdeaMatch[1].includes('<string')) {
+    concept = inkloomIdeaMatch[1].trim();
+  }
+
   // Match multiline or single line raw startup idea
-  const rawStartupMatch = prompt.match(/Raw Startup Idea:\s*\n?"?([\s\S]*?)"?\s*(?:\n\n|\n[A-Z=]|$)/i);
-  if (rawStartupMatch && rawStartupMatch[1] && rawStartupMatch[1].trim() && !rawStartupMatch[1].includes('<string')) {
-    concept = rawStartupMatch[1].trim().replace(/^"|"$/g, '').trim();
+  if (!concept) {
+    const rawStartupMatch = prompt.match(/Raw Startup Idea:\s*\n?"?([\s\S]*?)"?\s*(?:\n\n|\n[A-Z=]|$)/i);
+    if (rawStartupMatch && rawStartupMatch[1] && rawStartupMatch[1].trim() && !rawStartupMatch[1].includes('<string')) {
+      concept = rawStartupMatch[1].trim().replace(/^"|"$/g, '').trim();
+    }
   }
 
   // Match legacy User's Raw Idea between quotes or section break
@@ -328,6 +337,12 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
   if (schema) {
     const shape = (schema as any).shape || (typeof (schema as any)._def?.shape === 'function' ? (schema as any)._def.shape() : (schema as any)._def?.shape);
     if (shape) {
+      // ─── 0. COMPLETE BRAND PLAN (INKLOOM UNIFIED PIPELINE) ───────────
+      if ('brand_concept' in shape && 'visual_direction' in shape) {
+        const plan = generateContextualBrandPlan(userIdea, facts);
+        return JSON.stringify(plan);
+      }
+
       // ─── 1. POSITIONING STAGE ──────────────────────────────────────────────
       if ('directions' in shape) {
         // SCENARIO OVERRIDE BRANCH

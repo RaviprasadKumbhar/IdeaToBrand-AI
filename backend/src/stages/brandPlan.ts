@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { AIProvider } from '../ai/provider.js';
 import type { StageDraft, CriticFinding, SharedContext } from '@foil/shared';
 import { validateIdeaWordCount } from './discovery.js';
+import { generateContextualBrandPlan } from '../ai/contextualEngine.js';
 
 export const BrandPlanSchema = z.object({
   brand_concept: z.string().min(5),
@@ -80,6 +81,7 @@ Transform the founder's raw startup idea into an authoritative, launch-ready, st
 Output MUST be strict JSON matching the required schema.
 
 === USER IDEA ===
+Raw Startup Idea: "${rawIdea.trim()}"
 Idea: "${rawIdea.trim()}"
 ${input.constraints?.length ? `Constraints: ${input.constraints.join(', ')}` : ''}
 ${input.user_facts?.length ? `Known Facts: ${input.user_facts.join('; ')}` : ''}
@@ -104,7 +106,7 @@ Return a single JSON object with these 11 exact fields:
 
     if (!plan) {
       // Robust deterministic contextual synthesis if LLM returns non-conforming JSON
-      plan = this.synthesizeContextualBrandPlan(rawIdea, input.user_facts);
+      plan = generateContextualBrandPlan(rawIdea, input.user_facts, input.constraints);
     }
 
     const projectId = `proj_${Date.now()}`;
@@ -120,99 +122,7 @@ Return a single JSON object with these 11 exact fields:
   }
 
   private synthesizeContextualBrandPlan(idea: string, userFacts?: string[]): BrandPlan {
-    const isFood = /snack|food|eat|nutrition|protein|vegetarian|vegan|beverage|drink/i.test(idea);
-    const isStudent = /student|college|campus|dorm|university|study/i.test(idea);
-    const isAgri = /farmer|irrigation|crop|agri|harvest|soil/i.test(idea);
-
-    let audience = 'Conscious consumers seeking authentic, practical, high-value alternatives';
-    let problem = 'Existing market options are overpriced, overprocessed, and misaligned with real user needs';
-    let concept = idea.trim();
-    let valueProp = 'Delivering pure, high-potency value without the customary industry premium';
-    let primaryColor = '#10B981';
-    let palette = ['#047857', '#10B981', '#F59E0B', '#1E293B', '#F8FAFC'];
-    let archetype = 'The Resourceful Creator';
-    let traits = ['Authentic', 'Accessible', 'Reliable', 'Empowering'];
-    let tagline = 'Honest Value. Daily Fuel.';
-
-    if (isFood && isStudent) {
-      audience = 'College students and budget-conscious young adults seeking healthy, protein-rich snacks';
-      problem = 'Campus snack choices are expensive, heavily processed, and lack clean vegetarian protein';
-      concept = 'A high-protein, clean-ingredient vegetarian snack brand priced for student budgets';
-      valueProp = '12g+ plant protein per serving at student-friendly prices with zero artificial preservatives';
-      primaryColor = '#16A34A';
-      palette = ['#15803D', '#22C55E', '#FBBF24', '#0F172A', '#F8FAFC'];
-      archetype = 'The Everyday Companion';
-      traits = ['Energetic', 'Nutritious', 'Approachable', 'Straightforward'];
-      tagline = 'Smart Fuel for Campus Life.';
-    } else if (isAgri) {
-      audience = 'Smallholder farmers and agricultural cooperatives managing water scarcity';
-      problem = 'Unpredictable droughts and expensive irrigation hardware threaten family farm viability';
-      concept = 'Affordable, precision irrigation management designed for smallholder farms';
-      valueProp = 'Cut water consumption by 35% and boost yields with zero complex infrastructure';
-      primaryColor = '#0284C7';
-      palette = ['#0369A1', '#38BDF8', '#10B981', '#0F172A', '#F0F9FF'];
-      archetype = 'The Grounded Steward';
-      traits = ['Dependable', 'Practical', 'Resilient', 'Scientific'];
-      tagline = 'Every Drop Accounted For.';
-    }
-
-    return {
-      brand_concept: concept,
-      target_audience: audience,
-      problem,
-      value_proposition: valueProp,
-      brand_personality: {
-        archetype,
-        traits,
-        tone: 'Warm, direct, and transparent with zero corporate fluff',
-      },
-      name_suggestions: [
-        {
-          name: isFood ? 'ProSprout' : 'TerraPulse',
-          rationale: 'Evokes natural vitality and clean energy output',
-        },
-        {
-          name: isFood ? 'NutriCampus' : 'AgriSense',
-          rationale: 'Directly anchors utility and dedicated audience focus',
-        },
-        {
-          name: isFood ? 'PulseBite' : 'VerdantFlow',
-          rationale: 'Active, modern, and memorable brand syllable structure',
-        },
-      ],
-      tagline,
-      visual_direction: {
-        primary_color: primaryColor,
-        palette,
-        typography: 'Inter / Plus Jakarta Sans — modern geometric legibility',
-        aesthetic_keywords: ['Clean', 'Vibrant', 'Minimalist', 'Nutrient-Dense'],
-      },
-      brand_voice: {
-        style: 'Modern, empathetic, and action-oriented',
-        key_pillars: ['Radical Transparency', 'Empowerment', 'Unpretentious Quality'],
-        dos: ['Speak like a trusted peer', 'Highlight concrete benefits', 'Keep sentences crisp'],
-        donts: ['Never use clinical jargon', 'Avoid preachy guilt-tripping', 'No exaggerated claims'],
-      },
-      launch_content: {
-        headline: `Introducing ${isFood ? 'PulseBite' : 'TerraPulse'} — Built for What You Actually Need`,
-        announcement_pitch: `We started because we were tired of choosing between our wallets and our standards. Here is the new standard.`,
-        key_channels: ['Direct-to-Consumer Pop-ups', 'Community Partnerships', 'Targeted Short-Form Video'],
-        first_week_plan: [
-          'Day 1: Launch founder manifesto and early-access waitlist',
-          'Day 3: Seed 100 sample boxes to core campus/community leaders',
-          'Day 7: Release first batch with transparent feedback loop',
-        ],
-      },
-      consistency_audit: {
-        alignment_score: 95,
-        verdict: 'Strong strategic cohesion across audience, value proposition, voice, and visual cues.',
-        risks_checked: [
-          'Price-to-quality perception aligned',
-          'Audience tone validated against value proposition',
-          'Visual palette matches brand archetype',
-        ],
-      },
-    };
+    return generateContextualBrandPlan(idea, userFacts);
   }
 
   private assembleStageDecisions(plan: BrandPlan, idea: string): Record<string, unknown> {

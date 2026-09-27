@@ -140,4 +140,66 @@ describe('INKLOOM — Brand Plan Generation API & Pipeline (Phases 1-9)', () => 
     expect(res.status).toBe(401);
     expect(res.json.error_type).toBe('unauthorized');
   });
+
+  it('produces genuinely input-specific, highly differentiated brand plans for Tests A, B, and C', async () => {
+    const resA = await testRequest('POST', '/api/brand-plan', {
+      idea: 'A healthy affordable protein snack brand for college students in India.',
+    });
+    const resB = await testRequest('POST', '/api/brand-plan', {
+      idea: 'A premium handmade jewellery brand for working women.',
+    });
+    const resC = await testRequest('POST', '/api/brand-plan', {
+      idea: 'A SaaS platform that helps small restaurants reduce food waste.',
+    });
+
+    expect(resA.status).toBe(200);
+    expect(resB.status).toBe(200);
+    expect(resC.status).toBe(200);
+
+    const planA = resA.json.brand_plan;
+    const planB = resB.json.brand_plan;
+    const planC = resC.json.brand_plan;
+
+    // Verify completely different concepts
+    expect(planA.brand_concept).not.toEqual(planB.brand_concept);
+    expect(planB.brand_concept).not.toEqual(planC.brand_concept);
+
+    // Verify input-specific audiences
+    expect(planA.target_audience.toLowerCase()).toContain('student');
+    expect(planB.target_audience.toLowerCase()).toContain('women');
+    expect(planC.target_audience.toLowerCase()).toContain('restaurant');
+
+    // Verify input-specific problems
+    expect(planA.problem).toContain('canteen');
+    expect(planB.problem).toContain('jewelry');
+    expect(planC.problem).toContain('margins');
+
+    // Verify input-specific personalities & archetypes
+    expect(planA.brand_personality.archetype).toBe('The Everyday Companion');
+    expect(planB.brand_personality.archetype).toBe('The Refined Creator');
+    expect(planC.brand_personality.archetype).toBe('The Pragmatic Steward');
+
+    // Verify input-specific names
+    const namesA = planA.name_suggestions.map((n: any) => n.name);
+    const namesB = planB.name_suggestions.map((n: any) => n.name);
+    const namesC = planC.name_suggestions.map((n: any) => n.name);
+    expect(namesA).toContain('DesiPulse');
+    expect(namesB).toContain('Solene Atelier');
+    expect(namesC).toContain('ZeroScrap');
+
+    // Verify taglines
+    expect(planA.tagline).not.toEqual(planB.tagline);
+    expect(planB.tagline).not.toEqual(planC.tagline);
+
+    // Verify palettes & typography
+    expect(planA.visual_direction.primary_color).toBe('#EA580C');
+    expect(planB.visual_direction.primary_color).toBe('#D4AF37');
+    expect(planC.visual_direction.primary_color).toBe('#059669');
+    expect(planA.visual_direction.typography).not.toEqual(planB.visual_direction.typography);
+
+    // Verify launch headlines
+    expect(planA.launch_content.headline).toContain('DesiPulse');
+    expect(planB.launch_content.headline).toContain('Boardroom');
+    expect(planC.launch_content.headline).toContain('Food Budget');
+  });
 });
