@@ -8,11 +8,13 @@
     "backend",
     "frontend"
   ],
+  "main": "backend/dist/server.js",
   "scripts": {
+    "start": "npm run start --workspace=backend",
+    "build": "npm run build --workspace=shared && npm run build --workspace=backend && npm run build --workspace=frontend",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --build",
-    "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces --if-present"
   },
   "devDependencies": {

@@ -6,7 +6,7 @@
   "main": "./dist/server.js",
   "types": "./dist/server.d.ts",
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b --force",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run"

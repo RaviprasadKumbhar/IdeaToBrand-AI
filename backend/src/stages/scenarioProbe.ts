@@ -203,7 +203,7 @@ export class ScenarioProbeService {
    */
   keepOriginal(ctx: SharedContext, scenarioId: string): SharedContext {
     const safeOverrides = Array.isArray(ctx.scenario_overrides) ? ctx.scenario_overrides : [];
-    const scenarioIndex = safeOverrides.findIndex((s) => s.id === scenarioId);
+    const scenarioIndex = safeOverrides.findIndex((s: ScenarioOverride) => s.id === scenarioId);
     if (scenarioIndex === -1) {
       throw new Error(`ScenarioOverride with id "${scenarioId}" not found in SharedContext.`);
     }
@@ -236,7 +236,7 @@ export class ScenarioProbeService {
     }
 
     const safeOverrides = Array.isArray(ctx.scenario_overrides) ? ctx.scenario_overrides : [];
-    const scenarioIndex = safeOverrides.findIndex((s) => s.id === scenarioId);
+    const scenarioIndex = safeOverrides.findIndex((s: ScenarioOverride) => s.id === scenarioId);
     if (scenarioIndex === -1) {
       throw new Error(`ScenarioOverride with id "${scenarioId}" not found in SharedContext.`);
     }
@@ -247,7 +247,7 @@ export class ScenarioProbeService {
     }
 
     let updatedContext: SharedContext = { ...ctx };
-    const filteredDrafts = scenario.branch_drafts.filter((d) =>
+    const filteredDrafts = scenario.branch_drafts.filter((d: StageDraft) =>
       stageFilter.includes(d.stage)
     );
 
@@ -289,13 +289,13 @@ export class ScenarioProbeService {
     editedContent: Record<string, unknown>
   ): SharedContext {
     const safeOverrides = Array.isArray(ctx.scenario_overrides) ? ctx.scenario_overrides : [];
-    const scenarioIndex = safeOverrides.findIndex((s) => s.id === scenarioId);
+    const scenarioIndex = safeOverrides.findIndex((s: ScenarioOverride) => s.id === scenarioId);
     if (scenarioIndex === -1) {
       throw new Error(`ScenarioOverride with id "${scenarioId}" not found in SharedContext.`);
     }
 
     const scenario = safeOverrides[scenarioIndex];
-    const draftIndex = scenario.branch_drafts.findIndex((d) => d.stage === stage);
+    const draftIndex = scenario.branch_drafts.findIndex((d: StageDraft) => d.stage === stage);
     if (draftIndex === -1) {
       throw new Error(
         `Stage "${stage}" is not part of branch_drafts in scenario "${scenarioId}".`
