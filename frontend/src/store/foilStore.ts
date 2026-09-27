@@ -546,7 +546,7 @@ export const useFOILStore = create<FOILStore>((set, get) => {
     },
 
     loadProjectFromCloud: async (userId: string) => {
-      set({ activeUserId: userId, cloudSaveStatus: 'saving', cloudSaveError: null });
+      set({ activeUserId: userId, cloudSaveError: null });
       const { data, error } = await fetchUserProjects(userId);
       if (error) {
         set({ cloudSaveStatus: 'error', cloudSaveError: error.message });

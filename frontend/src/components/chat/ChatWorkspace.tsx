@@ -105,7 +105,11 @@ export function ChatWorkspace() {
         {
           id: 'welcome-back',
           sender: 'assistant',
-          text: `Welcome back! I have loaded your brand project for: "${String(ctx.user_facts.business_description).slice(0, 80)}...". How would you like to proceed?`,
+          text: (() => {
+            const desc = String(ctx.user_facts.business_description);
+            const truncated = desc.length > 80;
+            return `Welcome back! I have loaded your brand project for: "${desc.slice(0, 80)}${truncated ? '...' : ''}". How would you like to proceed?`;
+          })(),
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ];
@@ -363,16 +367,19 @@ export function ChatWorkspace() {
 
         setMessages((prev) => [...prev, assistantMsg]);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errMsg =
-        err?.message ||
-        (typeof err === 'string' ? err : "FOIL couldn't generate this step right now. Please retry.");
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'An unexpected error occurred. Please try again.';
       setMessages((prev) => [
         ...prev,
         {
           id: nextId('error'),
           sender: 'assistant',
-          text: errMsg,
+          text: errMsg || "FOIL couldn't generate this step right now. Please retry.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           isError: true,
         },

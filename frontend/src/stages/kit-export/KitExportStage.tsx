@@ -151,7 +151,7 @@ export function KitExportStage() {
       {exportContent && (
         <div className="space-y-3">
           <div className="flex items-center gap-2 p-3.5 bg-green-50 border border-green-200 rounded-md">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm" aria-hidden="true">\u2713</span>
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-sm" aria-hidden="true">✓</span>
             <div>
               <p className="text-sm font-semibold text-green-800">Brand kit assembled from approved decisions only.</p>
               <p className="text-xs text-green-700 mt-0.5">{exportContent.split('\n').length} lines generated from {Object.keys(store.ctx.approved_decisions).length} approved stages.</p>
@@ -162,7 +162,7 @@ export function KitExportStage() {
             <pre className="text-xs font-mono text-ink-700 whitespace-pre-wrap overflow-x-auto max-h-64 leading-relaxed">{exportContent}</pre>
           </div>
           <button id="btn-download-markdown" onClick={handleDownload} className="btn-primary">
-            \u2193 Download Markdown
+            ↓ Download Markdown
           </button>
         </div>
       )}

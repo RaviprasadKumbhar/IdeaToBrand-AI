@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    let unsubscribe: (() => void) | null = null;
 
     async function initAuth() {
       try {
@@ -99,9 +100,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
         });
 
-        return () => {
-          subscription.unsubscribe();
-        };
+        // Store the unsubscribe function so the outer cleanup can call it
+        unsubscribe = () => subscription.unsubscribe();
       } catch (err) {
         console.error('[AuthContext] Unexpected auth init error:', err);
         if (mounted) setLoading(false);
@@ -112,6 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      // Clean up the Supabase auth subscription to prevent memory leaks
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
