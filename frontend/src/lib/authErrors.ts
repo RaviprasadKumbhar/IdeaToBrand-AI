@@ -21,6 +21,12 @@ export const RATE_LIMIT_CONTENT = {
   subtext: 'Check your inbox and spam folder before trying again.',
 } as const;
 
+export const PASSWORD_RESET_RATE_LIMIT_CONTENT = {
+  title: 'Too many password reset requests',
+  description: "We've reached the email limit for this environment. Please wait at least 60 seconds before requesting another password reset link.",
+  subtext: 'Check your inbox and spam folder before trying again, or sign in directly if your credentials are valid.',
+} as const;
+
 export const SIGNUP_CONFIRMATION_CONTENT = {
   title: 'Check your email',
   heading: 'Check your email',
@@ -107,22 +113,26 @@ export function isRateLimitError(err: unknown): boolean {
   return false;
 }
 
-export function classifyAuthError(err: unknown): AuthFriendlyError {
+export function classifyAuthError(
+  err: unknown,
+  context?: 'verification' | 'reset' | 'general'
+): AuthFriendlyError {
   if (err instanceof AuthFriendlyError) {
     return err;
   }
 
   // 1. Rate-limit check (by stable code, HTTP status, or error message)
   if (isRateLimitError(err)) {
+    const isReset = context === 'reset';
     return new AuthFriendlyError({
       isRateLimit: true,
       isInvalidCredentials: false,
       isEmailNotConfirmed: false,
       isNetworkError: false,
       isAlreadyRegistered: false,
-      title: RATE_LIMIT_CONTENT.title,
-      message: RATE_LIMIT_CONTENT.description,
-      subtext: RATE_LIMIT_CONTENT.subtext,
+      title: isReset ? PASSWORD_RESET_RATE_LIMIT_CONTENT.title : RATE_LIMIT_CONTENT.title,
+      message: isReset ? PASSWORD_RESET_RATE_LIMIT_CONTENT.description : RATE_LIMIT_CONTENT.description,
+      subtext: isReset ? PASSWORD_RESET_RATE_LIMIT_CONTENT.subtext : RATE_LIMIT_CONTENT.subtext,
     });
   }
 
