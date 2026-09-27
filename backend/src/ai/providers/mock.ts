@@ -60,6 +60,13 @@ function extractContextFromPrompt(prompt: string) {
     concept = ideaTextMatch[1].trim();
   }
 
+  if (!concept) {
+    const brandPlanIdeaMatch = prompt.match(/(?:=== USER IDEA ===\s*\n*)?(?:Idea|Founder Idea|Startup Idea):\s*["']([^"'\n]+)["']/i);
+    if (brandPlanIdeaMatch && brandPlanIdeaMatch[1] && !brandPlanIdeaMatch[1].includes('<string')) {
+      concept = brandPlanIdeaMatch[1].trim();
+    }
+  }
+
   // Downstream stage fallback: inspect approved discovery decisions embedded in prompt
   if (!concept) {
     const approvedProblemMatch = prompt.match(/"core_problem"\s*:\s*"([^"]+)"/i);
@@ -296,19 +303,28 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
     /high school|robotics|k-12|teen/i.test(scenarioOverride!);
 
   // Domain detection
-  const isFarmersDirect = /farmer|agriculture|produce|crops?|harvest|growers?|farm-fresh|farm to/i.test(prompt);
-  const isRestaurantReservation = !isFarmersDirect && (
-    (/reservation|booking|seated diner|table turnover|no-show|covers|waitlist|guest dining/i.test(prompt) && /restaurant|dining|bistro|cafe|eatery/i.test(prompt)) ||
-    /table reservation|dinner reservation/i.test(prompt)
+  const isJewellery = /\b(?:jewel(?:ry|ler|lery)?|gems?|gemstones?|rings?|necklaces?|bracelets?|earrings?|artisan jewelry|handcrafted jewelry|handmade jewellery)\b/i.test(prompt);
+  const isFoodWaste = !isJewellery && (
+    /\b(?:food waste|waste reduction|reduce food waste|spoilage|kitchen inventory|surplus food|waste management)\b/i.test(prompt) ||
+    (/\b(?:restaurant|kitchen|dining|bistro|eatery)\b/i.test(prompt) && /\b(?:waste|spoilage|inventory)\b/i.test(prompt))
   );
-  const isTeammateMatching = (/teammate|peer match|capstone partner|class project partner/i.test(prompt)) &&
+  const isFarmersDirect = !isFoodWaste && !isJewellery && /\b(?:farmers?|agriculture|produce|crops?|harvest|growers?|farm-fresh|farm to)\b/i.test(prompt);
+  const isRestaurantReservation = !isFarmersDirect && !isFoodWaste && !isJewellery && (
+    (/\b(?:reservations?|bookings?|seated diners?|table turnovers?|no-shows?|covers?|waitlists?|guest dining)\b/i.test(prompt) && /\b(?:restaurants?|dining|bistros?|cafes?|eater(?:y|ies))\b/i.test(prompt)) ||
+    /\b(?:table reservations?|dinner reservations?)\b/i.test(prompt)
+  );
+  const isTeammateMatching = (/\b(?:teammate|peer match|capstone partner|class project partner)\b/i.test(prompt)) &&
     !/assistant|ai study/i.test(prompt);
-  const isStudyAssistant = /study assistant|ai study|study helper|engineering student.*study|exam prep|tutor/i.test(prompt) ||
-    ((/assistant/i.test(prompt) || /tutor/i.test(prompt)) && /student/i.test(prompt));
-  const isAppointmentBooking = !isRestaurantReservation && ((/appointment|booking|schedul|calendar/i.test(prompt) || /reservation/i.test(prompt)));
-  const isIndianSnack = /snack|namkeen|chaat|millet|indian food/i.test(userIdea);
+  const isStudyAssistant = /\b(?:study assistant|ai study|study helper|exam prep|tutor)\b/i.test(prompt) ||
+    ((/assistant/i.test(prompt) || /tutor/i.test(prompt)) && /\bstudent\b/i.test(prompt));
+  const isAppointmentBooking = !isRestaurantReservation && !isFoodWaste && !isJewellery && (/\b(?:appointment|schedul|calendar)\b/i.test(prompt) || (/\bbooking\b/i.test(prompt) && !/\brestaurant\b/i.test(prompt)));
+  const isIndianSnack = !isFoodWaste && !isJewellery && /\b(?:snacks?|namkeen|chaat|millets?|indian food|protein)\b/i.test(userIdea);
 
-  let dynamicName = isFarmersDirect
+  let dynamicName = isJewellery
+    ? 'AuraCraft'
+    : isFoodWaste
+    ? 'KitchenSavor'
+    : isFarmersDirect
     ? 'HarvestDirect'
     : isRestaurantReservation
     ? 'TableFlow'
@@ -319,7 +335,7 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
     : isTeammateMatching
     ? 'StudyNest'
     : isIndianSnack
-    ? 'PranaBites'
+    ? 'PulseBite'
     : deriveDynamicBrandName(userIdea);
 
   if (hasScenario) {
@@ -472,6 +488,68 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
         }
 
         // STANDARD DOMAIN BRANCHES
+        if (isJewellery) {
+          return JSON.stringify({
+            directions: [
+              {
+                title: 'The Everyday Fine Jewellery Standard',
+                category: 'Accessible Fine Jewellery & Professional Lifestyle',
+                target_audience: audience || 'Professional working women (24-45) looking for understated everyday elegance',
+                core_problem: 'Traditional fine jewelry is priced for rare occasions, while fashion jewelry tarnishes and causes skin reactions',
+                differentiator: 'Hypoallergenic recycled precious metals and ethical gemstones crafted for non-stop daily office wear',
+                value_proposition: 'Solid everyday luxury that never tarnishes, irritates, or demands 10x luxury markups',
+                competitive_angle: 'Unlike fast-fashion jewelry, built to last a lifetime; unlike Cartier or Tiffany, direct-to-consumer honest pricing',
+                strategic_rationale: 'Captures the booming self-gifting professional women segment',
+                potential_weakness: 'Requires continuous customer education on metal purity and vermeil standards',
+                critic_findings: [],
+              },
+              {
+                title: 'The Conscious Artisan Studio',
+                category: 'Ethical Handcrafted Design Studio',
+                target_audience: audience || 'Values-driven professional women and design connoisseurs',
+                core_problem: 'Opaque jewelry supply chains and impersonal mass-manufactured designs lack soul and story',
+                differentiator: 'Small-batch handmade pieces with verified artisan provenance and zero environmental compromises',
+                value_proposition: 'Wear meaningful artisanal craft that elevates your professional presence',
+                competitive_angle: 'Personal studio intimacy versus industrial luxury conglomerate branding',
+                strategic_rationale: 'Builds fierce brand loyalty through transparent artisan storytelling',
+                potential_weakness: 'Scale limitations with handmade small-batch production batches',
+                critic_findings: [],
+              },
+            ],
+          });
+        }
+
+        if (isFoodWaste) {
+          return JSON.stringify({
+            directions: [
+              {
+                title: 'The Predictive Kitchen Ledger',
+                category: 'B2B Hospitality / Kitchen Operations SaaS',
+                target_audience: audience || 'Independent restaurant operators, head chefs, and hospitality groups',
+                core_problem: 'Independent kitchens lose up to 10% of revenue to inventory spoilage caused by inaccurate prep forecasting',
+                differentiator: 'Predictive prep sheets driven by historical covers, weather, and automated 2-tap spoilage tracking',
+                value_proposition: 'Cut kitchen food waste by 35% and protect restaurant profit margins on day one',
+                competitive_angle: 'Unlike complex enterprise ERPs, requires zero training and runs on any kitchen tablet in under 15 seconds',
+                strategic_rationale: 'Immediate, quantifiable payback directly recovered from discarded inventory costs',
+                potential_weakness: 'Requires onboarding buy-in from busy morning kitchen prep cooks',
+                critic_findings: [],
+              },
+              {
+                title: 'The Zero-Waste Hospitality Copilot',
+                category: 'Sustainable Restaurant Intelligence Platform',
+                target_audience: audience || 'Eco-conscious restaurants, farm-to-table eateries, and culinary directors',
+                core_problem: 'Restaurants want to operate sustainably but lack real-time visibility into ingredient loss and cost impact',
+                differentiator: 'Automated surplus redistribution alerts, culinary scrap recipe suggestions, and real-time sustainability badges',
+                value_proposition: 'Turn food waste reduction into a marketable customer differentiator and bottom-line profit',
+                competitive_angle: 'Combines operational cost reduction with public-facing verified sustainability metrics',
+                strategic_rationale: 'Attracts eco-conscious diners while slashing procurement costs',
+                potential_weakness: 'Must keep daily logging frictionless so culinary teams stay compliant',
+                critic_findings: [],
+              },
+            ],
+          });
+        }
+
         if (isFarmersDirect) {
           return JSON.stringify({
             directions: [
@@ -712,6 +790,44 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
           }
         }
 
+        if (isJewellery) {
+          return JSON.stringify({
+            core_problem: 'Professional working women struggle to find fine jewellery that is hypoallergenic, durable enough for daily office wear, and free from 10x luxury retail markups.',
+            target_audience: audience || 'Professional working women (24-45) looking for understated, durable luxury and everyday wearability',
+            context_situation: 'Daily professional workplace and desk-to-dinner transitions where fast-fashion jewelry tarnishes and luxury items feel too precious or overpriced',
+            user_goals: 'Wear understated, sophisticated jewelry that never irritates sensitive skin or turns green, at honest direct-to-consumer prices',
+            constraints: 'Hypoallergenic certified metals (recycled solid silver/gold vermeil), water-resistant coatings, and transparent ethical sourcing',
+            value_desired_outcome: 'Effortless daily elegance and long-lasting personal pieces that celebrate career milestones',
+            open_questions: ['Which staple jewelry pieces (stud earrings, subtle pendants, stackable bands) have the highest daily repeat wear?'],
+            known_facts: facts.length > 0 ? facts : [userIdea],
+            inferred_assumptions: [
+              {
+                value: 'Working women prefer versatile minimalist aesthetics that transition seamlessly from corporate boardrooms to casual evenings',
+                rationale: 'Time-poor professionals avoid items that require frequent changing or delicate maintenance',
+              },
+            ],
+          });
+        }
+
+        if (isFoodWaste) {
+          return JSON.stringify({
+            core_problem: 'Independent restaurants lose 4–10% of total revenue directly to inventory spoilage and inaccurate prep forecasts while operating on razor-thin profit margins.',
+            target_audience: audience || 'Independent restaurant owners, head chefs, and kitchen general managers managing tight margins',
+            context_situation: 'Fast-paced commercial kitchens with fluctuating daily covers, volatile perishable ingredient lifespans, and manual clipboards',
+            user_goals: 'Predict prep quantities accurately, track real-time perishable inventory, and cut food waste to boost restaurant net margins',
+            constraints: 'Ultra-fast tablet UI usable by kitchen staff during prep shifts; seamless integration with existing POS systems',
+            value_desired_outcome: 'Up to 35% reduction in kitchen food waste and immediate bottom-line margin recovery within 30 days',
+            open_questions: ['What simple logging interaction takes under 15 seconds for line cooks to record daily prep leftovers?'],
+            known_facts: facts.length > 0 ? facts : [userIdea],
+            inferred_assumptions: [
+              {
+                value: 'Chefs will adopt digital prep sheets if they save 20 minutes of daily morning prep calculations',
+                rationale: 'Kitchen staff reject software that adds administrative friction during service rush hours',
+              },
+            ],
+          });
+        }
+
         if (isFarmersDirect) {
           return JSON.stringify({
             core_problem: 'Small regional farmers lose 30–50% of revenue to distribution middlemen while local buyers lack reliable direct access to fresh, sustainably harvested local produce.',
@@ -895,6 +1011,24 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
               { trait: 'Resilient', audience_justification: 'Navigating strategic shifts requires unwavering operational grit' },
             ];
           }
+        } else if (isJewellery) {
+          proposedName = 'AuraCraft';
+          territory = 'Timeless Craft & Professional Ambition';
+          rationale = 'Evokes luminous handcrafted beauty, skin-safe durability, and personal presence for working women';
+          personalityTraits = [
+            { trait: 'Sophisticated', audience_justification: 'Understated elegance suits professional corporate environments' },
+            { trait: 'Handcrafted', audience_justification: 'Celebrates authentic artisan care and transparent provenance' },
+            { trait: 'Empowering', audience_justification: 'Fine jewelry worn as a personal celebration of daily achievement' },
+          ];
+        } else if (isFoodWaste) {
+          proposedName = 'KitchenSavor';
+          territory = 'Culinary Precision & Profit Recovery';
+          rationale = 'Directly conveys kitchen efficiency, ingredient preservation, and margin recovery for independent restaurants';
+          personalityTraits = [
+            { trait: 'Pragmatic', audience_justification: 'Chefs demand actionable prep sheets without theoretical fluff' },
+            { trait: 'Resourceful', audience_justification: 'Maximizes ingredient yield and minimizes commercial kitchen spoilage' },
+            { trait: 'Data-Driven', audience_justification: 'Provides transparent food cost metrics that prove immediate ROI' },
+          ];
         } else if (isFarmersDirect) {
           proposedName = 'HarvestDirect';
           territory = 'Freshness & Direct Connection';
@@ -1003,6 +1137,36 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
             rationale_per_tagline: [
               'Explicitly targets the pivoted market condition',
               'Establishes bold category leadership under the new premise',
+            ],
+            critic_findings: [],
+          });
+        }
+
+        if (isJewellery) {
+          return JSON.stringify({
+            tagline_options: [
+              'Everyday Elegance for Modern Ambition.',
+              'Fine Artisan Jewelry That Keeps Pace With You.',
+            ],
+            one_line_pitch: 'AuraCraft crafts hypoallergenic, artisanal fine jewellery designed for professional working women to wear every single day without luxury markups.',
+            rationale_per_tagline: [
+              'Direct connection between timeless fine craft and workplace lifestyle',
+              'Durability and skin-safety promise for active professionals',
+            ],
+            critic_findings: [],
+          });
+        }
+
+        if (isFoodWaste) {
+          return JSON.stringify({
+            tagline_options: [
+              'Turn Kitchen Spoilage into Pure Profit.',
+              'Predictive Prep. Zero Waste.',
+            ],
+            one_line_pitch: 'KitchenSavor gives independent restaurants predictive prep forecasting that cuts food waste by 35% and boosts profit margins.',
+            rationale_per_tagline: [
+              'Direct bottom-line financial promise speaking to thin restaurant margins',
+              'Crisp operational focus targeting zero wasted ingredients',
             ],
             critic_findings: [],
           });
@@ -1157,6 +1321,38 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
             imagery_direction: 'High-energy agile teams executing rapid strategic pivots',
             concepts_to_avoid: ['Static legacy corporate clip-art', 'Passive stock photography'],
             rationale_linking_to_audience_and_positioning: 'Visually encodes momentum, strategic adaptation, and category disruption',
+            concept_disclaimer: 'AI-generated visual concept / design direction — not production-ready artwork.',
+          });
+        }
+
+        if (isJewellery) {
+          return JSON.stringify({
+            logo_direction: 'Delicate geometric gemstone facet intersecting with an elegant artisan monoline letterform',
+            color_mood: 'Warm amber gold, soft rose quartz, deep slate, and warm alabaster',
+            hex_palette: ['#92400E', '#D97706', '#FDE68A', '#1E293B', '#FAFAF9'],
+            type_roles: ['Headings: Playfair Display / Space Grotesk', 'Body: Plus Jakarta Sans / Inter'],
+            shape_language: 'Soft organic curves, delicate hairline borders, and polished stone silhouettes',
+            symbol_language: 'Gem facets, goldsmith hammer marks, delicate chain links, and radiant stars',
+            composition_layout: 'Warm, airy editorial layout with macro jewelry photography and tactile studio textures',
+            imagery_direction: 'Natural lighting on skin, hands crafting fine metals at jeweler benches, and versatile workwear styling',
+            concepts_to_avoid: ['Gaudy rhinestone glitter', 'Generic shopping mall jewelry graphics'],
+            rationale_linking_to_audience_and_positioning: 'Balances high-fashion editorial prestige with accessible, everyday warmth',
+            concept_disclaimer: 'AI-generated visual concept / design direction — not production-ready artwork.',
+          });
+        }
+
+        if (isFoodWaste) {
+          return JSON.stringify({
+            logo_direction: 'Streamlined kitchen prep leaf and digital pulse vector forming a precision efficiency emblem',
+            color_mood: 'Fresh emerald forest, culinary sage, modern amber alert, and crisp high-contrast slate',
+            hex_palette: ['#047857', '#059669', '#10B981', '#0F172A', '#F8FAFC'],
+            type_roles: ['Headings: Space Grotesk Bold', 'Body: Inter'],
+            shape_language: 'High-contrast kitchen prep cards with clean metric bars and rounded corners',
+            symbol_language: 'Prep clipboards, yield gauges, ingredient leaves, and zero-waste cycle arrows',
+            composition_layout: 'High-visibility dashboard optimized for busy kitchen tablet stations in landscape mode',
+            imagery_direction: 'Active commercial kitchens, fresh whole produce, chef prep stations, and clean digital tablets',
+            concepts_to_avoid: ['Dirty trash cans and rotting garbage imagery', 'Overly complex corporate enterprise charts'],
+            rationale_linking_to_audience_and_positioning: 'Dignifies kitchen work and emphasizes profit recovery rather than waste shame',
             concept_disclaimer: 'AI-generated visual concept / design direction — not production-ready artwork.',
           });
         }
