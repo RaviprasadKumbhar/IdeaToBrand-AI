@@ -88,6 +88,7 @@ export function ChatWorkspace() {
     uiStates,
     setIdeaInput,
     writeApprovedDecision,
+    startNewProject,
     resetProject,
     loadProjectIntoStore,
     cloudSaveStatus,
@@ -233,14 +234,39 @@ export function ChatWorkspace() {
 
     try {
       const isInitialConcept = !ctx.user_facts.business_description;
+
       const currentFacts = {
         ...ctx.user_facts,
-        business_description: String(ctx.user_facts.business_description || textToSend),
+        business_description: isInitialConcept ? textToSend : String(ctx.user_facts.business_description || textToSend),
         ...(newAttachments.length > 0 ? { constraints: `Attached files: ${newAttachments.map(a => a.name).join(', ')}` } : {}),
       };
 
       if (isInitialConcept) {
-        setIdeaInput(currentFacts);
+        await startNewProject(currentFacts);
+
+        // Derive initial grounded acknowledgment based on domain
+        const lower = textToSend.toLowerCase();
+        let inferredAudience = 'Target audience to be isolated in Discovery';
+        let inferredProblem = 'Core problem and frictions to be defined in Discovery';
+        let inferredOpportunity = 'Differentiated brand strategy and positioning';
+
+        if (/farmer|agri|crop|produce|harvest|rural/i.test(lower)) {
+          inferredAudience = 'Small independent farmers, local growers, and direct retail consumers';
+          inferredProblem = 'Intermediary middlemen fees and lack of direct consumer access';
+          inferredOpportunity = 'Direct farm-to-table platform with transparent fair pricing';
+        } else if (/student|study|exam|course|academic|tutor/i.test(lower)) {
+          inferredAudience = 'Students, academic learners, and exam candidates';
+          inferredProblem = 'Complex coursework comprehension, study fatigue, and fragmented materials';
+          inferredOpportunity = 'AI-powered personalized study assistance and concept mastering';
+        } else if (/appointment|booking|schedul|calendar|salon|clinic/i.test(lower)) {
+          inferredAudience = 'Local service businesses, clinics, salons, and their clients';
+          inferredProblem = 'Scheduling friction, customer no-shows, and manual booking admin';
+          inferredOpportunity = 'Automated direct booking, client reminders, and schedule management';
+        } else {
+          inferredAudience = `Target customers seeking a dedicated solution for ${textToSend.slice(0, 45)}`;
+          inferredProblem = `Customer pain points and market friction in ${textToSend.slice(0, 35)}`;
+          inferredOpportunity = `Modern, customer-centric brand providing direct value`;
+        }
 
         const assistantMsg: ChatMessage = {
           id: nextId('assistant'),
@@ -249,9 +275,9 @@ export function ChatWorkspace() {
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           ideaAcknowledgment: {
             idea: textToSend,
-            audience: 'Target audience to be isolated in Discovery',
-            problem: 'Core problem and frictions to be defined in Discovery',
-            opportunity: 'Differentiated brand strategy and positioning',
+            audience: inferredAudience,
+            problem: inferredProblem,
+            opportunity: inferredOpportunity,
           },
           showDiscoveryCTA: true,
         };
@@ -334,13 +360,16 @@ export function ChatWorkspace() {
 
         setMessages((prev) => [...prev, assistantMsg]);
       }
-    } catch {
+    } catch (err: any) {
+      const errMsg =
+        err?.message ||
+        (typeof err === 'string' ? err : "FOIL couldn't generate this step right now. Please retry.");
       setMessages((prev) => [
         ...prev,
         {
           id: nextId('error'),
           sender: 'assistant',
-          text: "FOIL couldn't generate this step right now.",
+          text: errMsg,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           isError: true,
         },

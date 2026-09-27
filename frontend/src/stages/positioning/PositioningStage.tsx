@@ -276,6 +276,16 @@ export function PositioningStage() {
   const selectedDir = activeSelectedIdx !== null ? directions[activeSelectedIdx] : null;
 
   async function handleGenerate() {
+    if (!store.ctx.approved_decisions.discovery || store.ctx.approved_decisions.discovery.state !== 'approved') {
+      store.setError('positioning', {
+        stage: 'positioning',
+        error_type: 'schema_validation_failed',
+        message: 'Positioning requires an approved Discovery foundation before it can run. Please complete and approve Stage 1 (Discovery) first.',
+        retryable: false,
+      });
+      return;
+    }
+
     setLocalDirections(null);
     setSelectedIdx(null);
     store.setLoading('positioning', true);
@@ -337,6 +347,7 @@ export function PositioningStage() {
 
   const approvalState = ui.approval_state;
   const isApproved = approvalState === 'approved';
+  const isDiscoveryApproved = store.ctx.approved_decisions.discovery?.state === 'approved';
 
   return (
     <StageScreen
@@ -471,7 +482,26 @@ export function PositioningStage() {
           )}
         </div>
       ) : (
-        <p className="text-sm text-ink-500 text-center py-4">No directions loaded yet.</p>
+        <div className="py-4 space-y-3 text-center">
+          {!isDiscoveryApproved && (
+            <div className="p-3.5 border border-amber-200 bg-amber-50/50 rounded-lg max-w-md mx-auto text-left space-y-2">
+              <p className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                <span>⚠</span> Stage 1 Discovery Required
+              </p>
+              <p className="text-xs text-ink-600 leading-relaxed">
+                Positioning directions are grounded in your approved Discovery foundation. Please complete and approve Stage 1 first.
+              </p>
+              <button
+                id="btn-goto-discovery"
+                onClick={() => navigate('/discovery')}
+                className="btn-primary text-xs py-1 px-3"
+              >
+                Go to Discovery →
+              </button>
+            </div>
+          )}
+          <p className="text-sm text-ink-500">No directions loaded yet.</p>
+        </div>
       )}
     </StageScreen>
   );

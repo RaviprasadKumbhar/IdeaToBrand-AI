@@ -48,16 +48,27 @@ stagesRouter.post("/stages/:stage/generate", async (req: Request, res: Response)
   try {
     switch (stage) {
       case "discovery": {
-        const ideaText =
+        const rawIdea =
           payload.idea_text ||
           payload.business_description ||
           payload.idea_input?.business_description ||
-          (typeof userFacts === "object" ? Object.values(userFacts).join(" ") : "") ||
-          "AI-driven innovative solution";
+          (userFacts && typeof userFacts === "object"
+            ? (userFacts.business_description || Object.values(userFacts).filter(Boolean).join(" "))
+            : "");
+
+        const ideaText = typeof rawIdea === "string" ? rawIdea.trim() : "";
+        if (!ideaText) {
+          return res.status(400).json({
+            stage: "discovery",
+            error_type: "invalid_input",
+            message: "Missing required startup idea or business description. Please provide a clear concept to generate your brand discovery plan.",
+            retryable: false,
+          });
+        }
 
         const rawFacts = Array.isArray(payload.known_facts)
           ? payload.known_facts
-          : Object.values(userFacts).map(String);
+          : Object.values(userFacts).map(String).filter((s) => s.trim().length > 0);
 
         const result = await discoveryService.generateDiscoveryDraft(
           {

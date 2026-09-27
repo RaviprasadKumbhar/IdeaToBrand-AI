@@ -45,7 +45,7 @@ const SAMPLE_IDEAS: SampleIdea[] = [
 
 export function IdeaInput() {
   const navigate = useNavigate();
-  const { setIdeaInput, ideaInput } = useFOILStore();
+  const { startNewProject, ideaInput } = useFOILStore();
 
   const [description, setDescription] = useState(ideaInput?.business_description ?? '');
   const [audience, setAudience] = useState(ideaInput?.target_audience ?? '');
@@ -79,7 +79,7 @@ export function IdeaInput() {
     return Object.keys(newErrors).length === 0;
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitted(true);
     if (!validate()) return;
@@ -91,8 +91,8 @@ export function IdeaInput() {
       ...(constraints.trim() ? { constraints: constraints.trim() } : {}),
     };
 
-    // Store as user_facts — strictly separate from downstream AI assumptions
-    setIdeaInput(input);
+    // Store as user_facts and initialize clean project — strictly separate from downstream AI assumptions
+    await startNewProject(input);
     navigate('/discovery');
   }
 
