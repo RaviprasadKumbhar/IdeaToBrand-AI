@@ -45,14 +45,24 @@ const SAMPLE_IDEAS: SampleIdea[] = [
 
 export function IdeaInput() {
   const navigate = useNavigate();
-  const { startNewProject, ideaInput } = useFOILStore();
+  const { startNewProject, ideaInput, ctx } = useFOILStore();
 
-  const [description, setDescription] = useState(ideaInput?.business_description ?? '');
-  const [audience, setAudience] = useState(ideaInput?.target_audience ?? '');
-  const [category, setCategory] = useState(ideaInput?.category ?? '');
-  const [constraints, setConstraints] = useState(ideaInput?.constraints ?? '');
+  const [description, setDescription] = useState(
+    ideaInput?.business_description ?? ctx?.user_facts?.business_description ?? ''
+  );
+  const [audience, setAudience] = useState(
+    ideaInput?.target_audience ?? ctx?.user_facts?.target_audience ?? ''
+  );
+  const [category, setCategory] = useState(
+    ideaInput?.category ?? ctx?.user_facts?.category ?? ''
+  );
+  const [constraints, setConstraints] = useState(
+    ideaInput?.constraints ?? ctx?.user_facts?.constraints ?? ''
+  );
   const [showOptional, setShowOptional] = useState(
-    !!(ideaInput?.target_audience || ideaInput?.category || ideaInput?.constraints)
+    !!(ideaInput?.target_audience || ctx?.user_facts?.target_audience ||
+       ideaInput?.category || ctx?.user_facts?.category ||
+       ideaInput?.constraints || ctx?.user_facts?.constraints)
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);

@@ -136,14 +136,19 @@ export function AppShell({ children }: AppShellProps) {
           {/* Current Idea / Session Status Indicator */}
           <div className="hidden sm:flex items-center gap-2 min-w-0">
             <span className="text-[11px] font-medium text-ink-400 flex-shrink-0">Current idea:</span>
-            <span
-              className="text-xs px-2.5 py-1 rounded-full bg-surface-100 border border-border text-ink-800 font-semibold truncate max-w-[200px] lg:max-w-[280px]"
-              title={String(ctx.user_facts['business_description'] || 'New Brand Project')}
+            <button
+              type="button"
+              onClick={() => navigate('/workspace')}
+              className="text-xs px-2.5 py-1 rounded-full bg-surface-100 hover:bg-surface-200 border border-border hover:border-accent-400 text-ink-800 font-semibold truncate max-w-[200px] lg:max-w-[280px] cursor-pointer transition-colors text-left flex items-center gap-1.5 group"
+              title="Click to view and edit current idea in workspace"
             >
-              {ctx.user_facts['business_description']
-                ? String(ctx.user_facts['business_description'])
-                : 'New Brand Project'}
-            </span>
+              <span className="truncate">
+                {ctx.user_facts['business_description']
+                  ? String(ctx.user_facts['business_description'])
+                  : 'New Brand Project'}
+              </span>
+              <span className="text-[10px] text-ink-400 group-hover:text-accent-600 font-normal">✎</span>
+            </button>
             {cloudSaveStatus === 'saving' && (
               <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-700 font-medium bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 flex-shrink-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" aria-hidden="true" />
