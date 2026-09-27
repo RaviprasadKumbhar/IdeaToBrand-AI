@@ -8,7 +8,7 @@ import { useState, useRef, useEffect, type KeyboardEvent, type ChangeEvent, type
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useFOILStore } from '../../store/foilStore';
-import { generateStage, sendInterviewTurn } from '../../lib/api-client';
+import { generateStage, sendInterviewTurn, runConsistencyAudit, assembleExport } from '../../lib/api-client';
 import { saveWorkspaceProject, loadWorkspaceProject } from '../../lib/supabase-workspace';
 import { DiscoveryReviewCard } from './DiscoveryReviewCard';
 import type { StageName, CriticFinding, FactItem, InterviewQuestion, DiscoveryContent } from '../../../../shared/types';
@@ -238,8 +238,10 @@ export function ChatWorkspace() {
 
     try {
       const trimmedText = textToSend.trim();
-      const isNewConceptPhrase = /^(?:i want to|we want to|my idea is to|my idea is|we are building|i am building|a marketplace|marketplace for|software for|platform for|an ai tutor|ai tutor|an app for|building a)/i.test(trimmedText);
-      const isInitialConcept = !ctx.user_facts.business_description || isNewConceptPhrase;
+      const isNewConceptPhrase = /^(?:i want to|we want to|my idea is to|my idea is|we are building|i am building|a marketplace|marketplace for|software for|platform for|an ai tutor|ai tutor|an app for|building a|make\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*for|create\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*for|build\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*for|design\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*for|start\s+(?:a|an)?\s*(?:business|company|shop|store|brand|service)?\s*for|website\s+for|webside\s+for|app\s+for)/i.test(trimmedText);
+      const isEndStage = currentWorkingStage === 'consistency_audit' || currentWorkingStage === 'kit_export';
+      const hasBusinessKeywords = /\b(?:coffee shop|coffee|restaurant|cafe|bakery|marketplace|tutor|gym|fitness|clinic|hotel|salon|store|boutique|delivery|agency|platform|service|ecommerce|e-commerce|shop)\b/i.test(trimmedText);
+      const isInitialConcept = !ctx.user_facts.business_description || isNewConceptPhrase || (isEndStage && hasBusinessKeywords);
 
       const currentFacts = {
         ...ctx.user_facts,
@@ -252,11 +254,13 @@ export function ChatWorkspace() {
 
         // Derive grounded acknowledgment based on user input
         const cleanedText = trimmedText
-          .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building)\s+(?:build|create|launch|start|develop|make|offer|sell|provide|design)?\s*/i, '')
+          .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building|make|create|build|start|launch|develop|design)\s+(?:a|an)?\s*(?:website|webside|app|platform|software|system|tool|brand|service|store|shop)?\s*(?:for|to|that)?\s*/i, '')
           .trim();
         const audMatch = cleanedText.match(/\b(?:for|serving|targeted at|helping|connecting|enabling|empowering|assisting)\s+([a-zA-Z\s]{3,40}?)(?:\s+(?:to\s+[a-z]+|manage|sell|prepare|find|build|scale|grow|automate|book|order|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
         const inferredAudience = audMatch
           ? audMatch[1].trim()
+          : /coffee|cafe/i.test(trimmedText)
+          ? 'Local coffee lovers, daily commuters, and specialty brew enthusiasts'
           : /farmer|agri/i.test(trimmedText)
           ? 'Small independent farmers and local households'
           : /student|exam/i.test(trimmedText)
@@ -265,7 +269,9 @@ export function ChatWorkspace() {
           ? 'Independent restaurants, dining rooms, and guests'
           : `Target audience seeking dedicated solutions for ${cleanedText.slice(0, 40)}`;
 
-        const inferredProblem = /farmer|agri/i.test(trimmedText)
+        const inferredProblem = /coffee|cafe/i.test(trimmedText)
+          ? 'Generic chain coffees, impersonal ordering experience, and lack of artisanal community spaces'
+          : /farmer|agri/i.test(trimmedText)
           ? 'Intermediary middlemen fees and lack of direct consumer access'
           : /student|exam/i.test(trimmedText)
           ? 'Complex coursework comprehension, study fatigue, and fragmented materials'
@@ -338,8 +344,38 @@ export function ChatWorkspace() {
           };
           setMessages((prev) => [...prev, assistantMsg]);
         }
+      } else if (targetStage === 'consistency_audit') {
+        const auditRes = await runConsistencyAudit(ctx.approved_decisions);
+        const assistantMsg: ChatMessage = {
+          id: nextId('assistant'),
+          sender: 'assistant',
+          text: `I've performed a Holistic Consistency Audit across your complete brand system. ${
+            auditRes.findings.length > 0
+              ? `Found ${auditRes.findings.length} item(s) to review for consistency.`
+              : 'Everything looks remarkably consistent across your name, tagline, voice, visuals, and launch messaging!'
+          }`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          stageRelated: 'consistency_audit',
+          findings: auditRes.findings as unknown as CriticFinding[],
+          isApproved: auditRes.findings.every((f) => f.user_action !== null),
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+      } else if (targetStage === 'kit_export') {
+        const exportRes = await assembleExport(ctx, ctx.consistency_findings);
+        const assistantMsg: ChatMessage = {
+          id: nextId('assistant'),
+          sender: 'assistant',
+          text: exportRes.status === 'exported'
+            ? 'Your complete Brand Kit is assembled and ready for export!'
+            : 'Export is currently gated. Please ensure all 7 stages are approved and consistency findings resolved.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          stageRelated: 'kit_export',
+          stageContent: exportRes as unknown as Record<string, unknown>,
+          isApproved: exportRes.status === 'exported',
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
       } else {
-        // Subsequent stages (positioning, naming, tagline, visual, voice, launch, audit, export) or direct stage generation
+        // Subsequent stages (positioning, naming, tagline, visual, voice, launch) or direct stage generation
         const res = await generateStage(targetStage, {
           user_message: textToSend,
           idea_text: currentFacts.business_description,
