@@ -179,8 +179,35 @@ describe("T-037: Backend Integration API Endpoints", () => {
     expect(Array.isArray(res.json.findings)).toBe(true);
   });
 
-  it("POST /api/scenario-probe returns 200 with isolated branch comparison data", async () => {
+  it("POST /api/scenario-probe returns 200 with isolated branch comparison data when approved context is present", async () => {
+    // Scenario Probe requires real approved decisions — no static fallback content (architecture.md §10)
+    let ctx = createInitialSharedContext("scenario_probe_200_test");
+    ctx = writeApprovedDecision(ctx, "discovery", {
+      core_problem: "Engineering students struggle to find qualified capstone teammates under tight deadlines",
+      target_audience: "Senior university engineering students",
+      context_situation: "Pre-semester project registration",
+      user_goals: "Find qualified partner",
+      constraints: "Credit restrictions apply",
+      value_desired_outcome: "Balanced project team",
+      open_questions: [],
+      known_facts: ["Semester deadline in 2 weeks"],
+      inferred_assumptions: [],
+    }, "strategist_approved", "init");
+    ctx = writeApprovedDecision(ctx, "positioning", {
+      title: "Vetted Peer Matching",
+      category: "Academic Matchmaking",
+      target_audience: "Senior engineering students",
+      core_problem: "Unvetted team rosters fail capstone projects",
+      differentiator: "Proof-of-work skill profiles",
+      value_proposition: "Find verified peers in hours, not weeks",
+      competitive_angle: "Built specifically for capstone teams",
+      strategic_rationale: "Solves capstone panic before semester starts",
+      potential_weakness: "Limited to partner institutions initially",
+    }, "strategist_approved", "init");
+    ctx = { ...ctx, user_facts: { business_description: "AI tutor for engineering college students preparing for exams" } };
+
     const res = await testRequest("POST", "/api/scenario-probe", {
+      context: ctx,
       triggered_from_stage: "positioning",
       what_if_input: "What if we target high school robotics teams instead?",
     });
@@ -191,6 +218,16 @@ describe("T-037: Backend Integration API Endpoints", () => {
     expect(res.json.triggered_from_stage).toBe("positioning");
     expect(Array.isArray(res.json.affected_stages)).toBe(true);
     expect(Array.isArray(res.json.changed_fields)).toBe(true);
+  });
+
+  it("POST /api/scenario-probe returns 409 when trigger stage has no approved decisions", async () => {
+    const res = await testRequest("POST", "/api/scenario-probe", {
+      triggered_from_stage: "positioning",
+      what_if_input: "What if we target high school robotics teams instead?",
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.json.error_type).toBe("unapproved_trigger_stage");
   });
 
   it("POST /api/scenario-probe/keep marks decision as keep_original and leaves approved_decisions untouched", async () => {

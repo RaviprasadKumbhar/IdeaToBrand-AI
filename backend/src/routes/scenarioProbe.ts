@@ -44,20 +44,17 @@ async function handleScenarioRun(req: Request, res: Response) {
   // Support both full SharedContext and approved_decisions payload defensively
   const context = normalizeScenarioContext(payload);
 
-  // If called without approved_decisions for the trigger stage (e.g. standalone API probe test),
-  // seed a baseline approved decision so that the probe can explore downstream impacts
-  if (!context.approved_decisions[triggered_from_stage]) {
-    context.approved_decisions[triggered_from_stage] = {
-      stage: triggered_from_stage,
-      content: {
-        title: 'Initial Strategic Baseline',
-        target_audience: 'General Market',
-        core_problem: 'Baseline market problem',
-      },
-      approved_at: new Date().toISOString(),
-      state: 'approved',
-      source: 'strategist_approved',
-    };
+  // Validate that the trigger stage has real approved content in the context.
+  // Per architecture.md principle 10: no fabricated fallback content ever.
+  // If the trigger stage is missing, return a clear 409 so the UI can surface it.
+  if (!context.approved_decisions[triggered_from_stage] ||
+      !context.approved_decisions[triggered_from_stage].content ||
+      Object.keys(context.approved_decisions[triggered_from_stage].content).length === 0) {
+    return res.status(409).json({
+      error_type: 'unapproved_trigger_stage',
+      message: `Scenario Probe requires stage "${triggered_from_stage}" to be approved with real content before probing. Please complete and approve that stage first.`,
+      retryable: false,
+    });
   }
 
   try {
