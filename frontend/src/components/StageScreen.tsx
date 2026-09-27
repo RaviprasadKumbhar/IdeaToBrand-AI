@@ -6,12 +6,25 @@
  * design.md § 12 — "Stage Screen Anatomy"
  */
 import { type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { StageName, ApprovalState, CriticFinding, StageErrorResponse } from '../../../shared/types';
 import { CriticFindingCard } from './CriticFindingCard';
 import { ApprovalBar } from './ApprovalBar';
 import { LoadingState } from './LoadingState';
 import { ErrorState } from './ErrorState';
 import { NeedsReviewBanner } from './NeedsReviewBanner';
+
+const NEXT_STAGE_MAP: Record<StageName, { label: string; route: string } | null> = {
+  discovery:          { label: 'Positioning Matrix', route: '/positioning' },
+  positioning:        { label: 'Naming + Personality', route: '/naming-personality' },
+  naming_personality: { label: 'Tagline + Pitch', route: '/tagline-pitch' },
+  tagline_pitch:      { label: 'Visual Brief', route: '/visual-brief' },
+  visual_brief:       { label: 'Voice + Messaging', route: '/voice-messaging' },
+  voice_messaging:    { label: 'Launch Preparation', route: '/launch-prep' },
+  launch_prep:        { label: 'Consistency Audit', route: '/consistency-audit' },
+  consistency_audit:  { label: 'Brand Kit & Export', route: '/export' },
+  kit_export:         null,
+};
 
 interface StageScreenProps {
   /** Stage identifier */
@@ -86,6 +99,8 @@ export function StageScreen({
   needsReviewCause,
   approveDisabled = false,
 }: StageScreenProps) {
+  const navigate = useNavigate();
+  const nextStage = NEXT_STAGE_MAP[stage];
   const pendingFindings = findings.filter((f) => f.user_action === null);
   const hasBlockingFindings = pendingFindings.length > 0;
 
@@ -187,22 +202,35 @@ export function StageScreen({
             />
           )}
 
-          {/* ─── Edit-approved controls ───────────────────────────────── */}
+          {/* ─── Approved state actions: Next Stage CTA + Edit option ────── */}
           {approvalState === 'approved' && (
-            <div className="flex items-center gap-3 pt-2 border-t border-border mt-1">
-              {onEdit && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-border mt-2">
+              <div className="flex items-center gap-3">
+                {onEdit && (
+                  <button
+                    id={`btn-edit-approved-${stage}`}
+                    onClick={onEdit}
+                    className="btn-secondary text-xs px-3 py-1.5"
+                    aria-label="Edit this approved decision — downstream stages may need review"
+                  >
+                    ✎ Edit Decision
+                  </button>
+                )}
+                <p className="text-xs text-ink-500">
+                  Decision locked into brand strategy.
+                </p>
+              </div>
+
+              {nextStage && (
                 <button
-                  id={`btn-edit-approved-${stage}`}
-                  onClick={onEdit}
-                  className="btn-secondary text-xs"
-                  aria-label="Edit this approved decision — downstream stages may need review"
+                  id={`btn-next-stage-${stage}`}
+                  onClick={() => navigate(nextStage.route)}
+                  className="btn-primary text-xs px-4 py-2 font-semibold shadow-xs flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
                 >
-                  ✎ Edit Decision
+                  <span>Proceed to Stage {stageNumber + 1}: {nextStage.label}</span>
+                  <span aria-hidden="true">→</span>
                 </button>
               )}
-              <p className="text-xs text-ink-500">
-                Editing will mark dependent stages for review.
-              </p>
             </div>
           )}
         </>

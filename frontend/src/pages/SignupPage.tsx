@@ -5,7 +5,7 @@
  */
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, isUserEmailConfirmed } from '../context/AuthContext';
 import { isRateLimitError, RATE_LIMIT_CONTENT, SIGNUP_CONFIRMATION_CONTENT } from '../lib/authErrors';
 
 export function SignupPage() {
@@ -62,7 +62,7 @@ export function SignupPage() {
       } else {
         setError(authError.message || 'Failed to create account.');
       }
-    } else if (newSession?.user && newSession.user.email_confirmed_at) {
+    } else if (newSession?.user && (isUserEmailConfirmed(newSession.user) || newSession.access_token)) {
       navigate('/workspace');
     } else if (requiresVerification) {
       setRegisteredEmail(cleanEmail);

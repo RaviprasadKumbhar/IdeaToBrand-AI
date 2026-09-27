@@ -1336,6 +1336,204 @@ function HumanReadableStageContent({
     );
   }
 
+  if (stage === 'visual_brief') {
+    const logoDir = (content.logo_direction as string) || '';
+    const colorMood = (content.color_mood as string) || '';
+    const hexPalette = Array.isArray(content.hex_palette) ? (content.hex_palette as string[]) : [];
+    const typeRoles = Array.isArray(content.type_roles) ? (content.type_roles as string[]) : [];
+    const imagery = (content.imagery_direction as string) || '';
+    const avoid = Array.isArray(content.concepts_to_avoid) ? (content.concepts_to_avoid as string[]) : [];
+
+    return (
+      <div className="space-y-3 bg-surface-50 p-3.5 rounded-xl border border-border text-left">
+        {logoDir && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Logo Direction</span>
+            <p className="text-xs font-semibold text-ink-950 mt-0.5">{logoDir}</p>
+          </div>
+        )}
+        {(colorMood || hexPalette.length > 0) && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Color Palette & Mood</span>
+            {colorMood && <p className="text-xs text-ink-700 mt-0.5">{colorMood}</p>}
+            {hexPalette.length > 0 && (
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                {hexPalette.map((hex, i) => (
+                  <div key={i} className="flex items-center gap-1.5 bg-white border border-border rounded-md px-2 py-1 shadow-2xs">
+                    <span
+                      className="w-4 h-4 rounded-full border border-black/10 flex-shrink-0"
+                      style={{ backgroundColor: hex }}
+                      aria-hidden="true"
+                    />
+                    <span className="text-[11px] font-mono font-medium text-ink-800">{hex}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {typeRoles.length > 0 && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Typography Roles</span>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {typeRoles.map((role, i) => (
+                <span key={i} className="text-xs bg-white text-ink-800 px-2 py-0.5 rounded border border-border">
+                  {role}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {imagery && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Imagery Direction</span>
+            <p className="text-xs text-ink-800 mt-0.5">{imagery}</p>
+          </div>
+        )}
+        {avoid.length > 0 && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-red-700">Concepts to Avoid</span>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {avoid.map((item, i) => (
+                <span key={i} className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded border border-red-200">
+                  ✕ {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (stage === 'voice_messaging') {
+    const voiceDesc = (content.voice_description as string) || '';
+    const toneChars = Array.isArray(content.tone_characteristics) ? (content.tone_characteristics as string[]) : [];
+    const doList = Array.isArray(content.do_list) ? (content.do_list as string[]) : [];
+    const dontList = Array.isArray(content.dont_list) ? (content.dont_list as string[]) : [];
+    const sampleMsgs = Array.isArray(content.sample_messages) ? (content.sample_messages as any[]) : [];
+
+    return (
+      <div className="space-y-3 bg-surface-50 p-3.5 rounded-xl border border-border text-left">
+        {voiceDesc && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Voice Description</span>
+            <p className="text-xs font-semibold text-ink-950 mt-0.5">{voiceDesc}</p>
+          </div>
+        )}
+        {toneChars.length > 0 && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Tone Characteristics</span>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {toneChars.map((t, i) => (
+                <span key={i} className="text-xs bg-accent-50 text-accent-700 font-medium px-2 py-0.5 rounded border border-accent-200">
+                  {t}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {(doList.length > 0 || dontList.length > 0) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            {doList.length > 0 && (
+              <div className="p-2.5 bg-green-50/70 border border-green-200/80 rounded-lg">
+                <span className="text-[10px] font-bold uppercase text-green-800 block mb-1">✓ What to Say (Do)</span>
+                <ul className="space-y-1 text-[11px] text-green-950">
+                  {doList.map((d, i) => (
+                    <li key={i}>• {d}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {dontList.length > 0 && (
+              <div className="p-2.5 bg-red-50/70 border border-red-200/80 rounded-lg">
+                <span className="text-[10px] font-bold uppercase text-red-800 block mb-1">✕ What to Avoid (Don't)</span>
+                <ul className="space-y-1 text-[11px] text-red-950">
+                  {dontList.map((d, i) => (
+                    <li key={i}>• {d}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+        {sampleMsgs.length > 0 && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Sample Messages</span>
+            <div className="mt-1.5 space-y-1.5">
+              {sampleMsgs.map((m, i) => (
+                <div key={i} className="p-2 bg-white rounded border border-border text-xs">
+                  <p className="font-semibold text-ink-950">"{m.message || m}"</p>
+                  {m.explanation && <p className="text-[11px] text-ink-500 mt-0.5">{m.explanation}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (stage === 'launch_prep') {
+    const headline = (content.landing_headline as string) || '';
+    const socialPost = (content.social_launch_post as string) || '';
+
+    return (
+      <div className="space-y-3 bg-surface-50 p-3.5 rounded-xl border border-border text-left">
+        {headline && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Landing Page Headline</span>
+            <h4 className="text-sm font-bold text-ink-950 bg-white p-2.5 rounded border border-border mt-1">
+              {headline}
+            </h4>
+          </div>
+        )}
+        {socialPost && (
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-500">Launch Announcement Post</span>
+            <div className="mt-1 p-3 bg-white rounded-lg border border-border shadow-2xs space-y-2">
+              <p className="text-xs text-ink-900 whitespace-pre-wrap leading-relaxed">{socialPost}</p>
+              <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[10px] text-ink-400">
+                <span>✦ Ready to publish</span>
+                <span>Launch Copy</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (stage === 'consistency_audit') {
+    const findings = Array.isArray(content.findings) ? (content.findings as any[]) : [];
+    const isClean = findings.length === 0;
+
+    return (
+      <div className="space-y-3 bg-surface-50 p-3.5 rounded-xl border border-border text-left">
+        <div className="flex items-center gap-2">
+          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isClean ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+            {isClean ? '✓' : '!'}
+          </span>
+          <span className="font-bold text-xs text-ink-950">
+            {isClean ? 'All Strategic Decisions Aligned' : `${findings.length} Potential Inconsistencies Detected`}
+          </span>
+        </div>
+        {findings.length > 0 && (
+          <div className="space-y-1.5 mt-2">
+            {findings.map((f, i) => (
+              <div key={i} className="p-2.5 bg-amber-50/70 border border-amber-200/80 rounded text-xs">
+                <span className="font-semibold text-amber-900">[{f.issue_type}] {f.why_it_matters || f.explanation}</span>
+                {f.sharper_alternative && (
+                  <p className="text-ink-700 text-[11px] mt-0.5">Recommendation: {f.sharper_alternative}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // Generic fallback: clean key-value labels without raw JSON
   return (
     <div className="space-y-2 bg-surface-50 p-3 rounded-lg border border-border text-left">

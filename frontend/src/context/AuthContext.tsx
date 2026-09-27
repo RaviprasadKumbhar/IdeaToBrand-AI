@@ -260,8 +260,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
 
-      // When email confirmation is required, Supabase returns session === null
-      // or an unconfirmed user. NEVER fake a logged-in session before verification.
+      // The Postgres database trigger auto-confirms newly registered users.
+      // If data.session is not returned or data.user.email_confirmed_at is not reflected yet in GoTrue's in-memory response,
+      // attempt an immediate signInWithPassword against the database (where our trigger confirmed the email).
+      if (!data.session || !isUserEmailConfirmed(data.user)) {
+        try {
+          const loginRes = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
+          if (loginRes.data?.session && loginRes.data?.user && isUserEmailConfirmed(loginRes.data.user)) {
+            setSession(loginRes.data.session);
+            setUser(loginRes.data.user);
+            useFOILStore.getState().setActiveUser(loginRes.data.user.id);
+            return { error: null, requiresVerification: false, session: loginRes.data.session };
+          }
+        } catch {
+          // If immediate sign-in fails, fallback to verification check
+        }
+      }
+
+      // When email confirmation is strictly unconfirmed in both response and DB
       const isConfirmed = isUserEmailConfirmed(data.user);
       if (!isConfirmed) {
         await supabase.auth.signOut();
@@ -272,6 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setSession(data.session);
       setUser(data.user);
+      useFOILStore.getState().setActiveUser(data.user.id);
       return { error: null, requiresVerification: false, session: data.session };
     } catch (err) {
       return { error: classifyAuthError(err) };
