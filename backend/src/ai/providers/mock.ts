@@ -65,27 +65,31 @@ function extractContextFromPrompt(prompt: string) {
     facts.push(...lines);
   }
 
-  // Check for audience in concept or prompt (prioritize human beneficiaries from verb phrases)
-  const helpingAudMatch = concept.match(/\b(?:helping|enabling|empowering|connecting|targeted at|assisting)\s+([a-zA-Z\s]{3,45}?)(?:\s+(?:to\s+[a-z]+|sell|prepare|manage|find|build|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
-  if (helpingAudMatch && helpingAudMatch[1]) {
-    const candidate = helpingAudMatch[1].trim();
-    if (!/^(?:my brand|myself|us|start|build|them|everyone|people)$/i.test(candidate)) {
+  // Clean founder intent lead-in phrases so the core business offering is isolated
+  const cleanedIdea = concept
+    .replace(/^(?:i want to|we want to|my idea is to|we are building|i am building|i\'d like to|looking to|our goal is to)\s+(?:build|create|launch|start|develop|make|offer|sell|provide|design)?\s*/i, '')
+    .trim();
+
+  // Extract human audience from cleaned concept using precise preposition and verb boundaries
+  const forMatch = cleanedIdea.match(/\b(?:for|serving|targeted at|helping|connecting|enabling|empowering|assisting)\s+([a-zA-Z\s]{3,40}?)(?:\s+(?:to\s+[a-z]+|manage|sell|prepare|find|build|scale|grow|automate|book|order|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
+  if (forMatch && forMatch[1]) {
+    const candidate = forMatch[1].trim();
+    if (!/^(?:my brand|myself|us|start|build|them|everyone|people|exams?|university exams?|tests?|interviews?)$/i.test(candidate)) {
       audience = candidate;
     }
   }
 
   if (!audience) {
-    const audMatch = concept.match(/\b(?:for|to)\s+([a-zA-Z\s]{3,45}?)(?:\b(?:in|who|that|seeking|looking|preparing|struggling|facing|to)\b|[.,;]|$)/i);
-    if (audMatch && audMatch[1]) {
-      const candidate = audMatch[1].trim();
-      // Filter out non-audience targets like exams, interviews, tests, appointments
-      if (!/^(?:my brand|myself|us|start|build|exams?|university exams?|tests?|interviews?)$/i.test(candidate)) {
+    const helpingAudMatch = concept.match(/\b(?:helping|enabling|empowering|connecting|targeted at|assisting)\s+([a-zA-Z\s]{3,45}?)(?:\s+(?:to\s+[a-z]+|sell|prepare|manage|find|build|with|for|in|who|that|monetize)\b|[.,;]|$)/i);
+    if (helpingAudMatch && helpingAudMatch[1]) {
+      const candidate = helpingAudMatch[1].trim();
+      if (!/^(?:my brand|myself|us|start|build|them|everyone|people)$/i.test(candidate)) {
         audience = candidate;
       }
     }
   }
 
-  return { concept, audience, facts };
+  return { concept: cleanedIdea || concept, audience, facts };
 }
 
 export function extractScenarioFromPrompt(prompt: string): string | null {
@@ -283,15 +287,16 @@ function getDefaultMockResponse(prompt: string, schema?: ZodSchema<any>): string
     /high school|robotics|k-12|teen/i.test(scenarioOverride!);
 
   // Domain detection
-  const isRestaurantReservation = /restaurant|dining|bistro|cafe|table reservation|dinner reservation|eatery/i.test(prompt) ||
-    (/reservation/i.test(prompt) && /food|table|guest|restaurant/i.test(prompt));
-  const isFarmersDirect = /farmer|agriculture|produce|farm|crop|harvest|grower/i.test(prompt) && !isRestaurantReservation;
+  const isFarmersDirect = /farmer|agriculture|produce|crops?|harvest|growers?|farm-fresh|farm to/i.test(prompt);
+  const isRestaurantReservation = !isFarmersDirect && (
+    (/reservation|booking|seated diner|table turnover|no-show|covers|waitlist|guest dining/i.test(prompt) && /restaurant|dining|bistro|cafe|eatery/i.test(prompt)) ||
+    /table reservation|dinner reservation/i.test(prompt)
+  );
   const isTeammateMatching = (/teammate|peer match|capstone partner|class project partner/i.test(prompt)) &&
     !/assistant|ai study/i.test(prompt);
   const isStudyAssistant = /study assistant|ai study|study helper|engineering student.*study|exam prep|tutor/i.test(prompt) ||
     ((/assistant/i.test(prompt) || /tutor/i.test(prompt)) && /student/i.test(prompt));
-  const isAppointmentBooking = (/appointment|booking|schedul|calendar/i.test(prompt) || /reservation/i.test(prompt)) &&
-    !isRestaurantReservation;
+  const isAppointmentBooking = !isRestaurantReservation && ((/appointment|booking|schedul|calendar/i.test(prompt) || /reservation/i.test(prompt)));
   const isIndianSnack = /snack|namkeen|chaat|millet|indian food/i.test(userIdea);
 
   let dynamicName = isFarmersDirect

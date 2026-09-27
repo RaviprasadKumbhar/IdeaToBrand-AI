@@ -171,10 +171,11 @@ export class ScenarioProbeService {
 
     // Invariant: original ctx.approved_decisions remains 100% untouched.
     // The scenario override is stored in scenario_overrides.
+    const safeOverrides = Array.isArray(ctx.scenario_overrides) ? ctx.scenario_overrides : [];
     const updatedContext: SharedContext = {
       ...ctx,
       scenario_overrides: [
-        ...ctx.scenario_overrides,
+        ...safeOverrides,
         JSON.parse(JSON.stringify(scenarioOverride)),
       ],
     };
@@ -191,12 +192,13 @@ export class ScenarioProbeService {
    * Leaves approved_decisions completely untouched. Records decision: 'keep_original'.
    */
   keepOriginal(ctx: SharedContext, scenarioId: string): SharedContext {
-    const scenarioIndex = ctx.scenario_overrides.findIndex((s) => s.id === scenarioId);
+    const safeOverrides = Array.isArray(ctx.scenario_overrides) ? ctx.scenario_overrides : [];
+    const scenarioIndex = safeOverrides.findIndex((s) => s.id === scenarioId);
     if (scenarioIndex === -1) {
       throw new Error(`ScenarioOverride with id "${scenarioId}" not found in SharedContext.`);
     }
 
-    const updatedScenarios = [...ctx.scenario_overrides];
+    const updatedScenarios = [...safeOverrides];
     updatedScenarios[scenarioIndex] = {
       ...updatedScenarios[scenarioIndex],
       decision: 'keep_original',
@@ -223,12 +225,13 @@ export class ScenarioProbeService {
       return acceptScenarioBranch(ctx, scenarioId);
     }
 
-    const scenarioIndex = ctx.scenario_overrides.findIndex((s) => s.id === scenarioId);
+    const safeOverrides = Array.isArray(ctx.scenario_overrides) ? ctx.scenario_overrides : [];
+    const scenarioIndex = safeOverrides.findIndex((s) => s.id === scenarioId);
     if (scenarioIndex === -1) {
       throw new Error(`ScenarioOverride with id "${scenarioId}" not found in SharedContext.`);
     }
 
-    const scenario = ctx.scenario_overrides[scenarioIndex];
+    const scenario = safeOverrides[scenarioIndex];
     if (!scenario.branch_drafts || scenario.branch_drafts.length === 0) {
       throw new Error(`ScenarioOverride "${scenarioId}" has no branch drafts to accept.`);
     }
@@ -252,7 +255,7 @@ export class ScenarioProbeService {
       );
     }
 
-    const updatedScenarios = [...updatedContext.scenario_overrides];
+    const updatedScenarios = [...(Array.isArray(updatedContext.scenario_overrides) ? updatedContext.scenario_overrides : safeOverrides)];
     updatedScenarios[scenarioIndex] = {
       ...scenario,
       decision: 'accept_branch',
@@ -275,12 +278,13 @@ export class ScenarioProbeService {
     stage: StageName,
     editedContent: Record<string, unknown>
   ): SharedContext {
-    const scenarioIndex = ctx.scenario_overrides.findIndex((s) => s.id === scenarioId);
+    const safeOverrides = Array.isArray(ctx.scenario_overrides) ? ctx.scenario_overrides : [];
+    const scenarioIndex = safeOverrides.findIndex((s) => s.id === scenarioId);
     if (scenarioIndex === -1) {
       throw new Error(`ScenarioOverride with id "${scenarioId}" not found in SharedContext.`);
     }
 
-    const scenario = ctx.scenario_overrides[scenarioIndex];
+    const scenario = safeOverrides[scenarioIndex];
     const draftIndex = scenario.branch_drafts.findIndex((d) => d.stage === stage);
     if (draftIndex === -1) {
       throw new Error(

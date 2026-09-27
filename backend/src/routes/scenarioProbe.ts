@@ -23,16 +23,18 @@ async function handleScenarioRun(req: Request, res: Response) {
     });
   }
 
-  // Support both full SharedContext and approved_decisions payload
-  const context: SharedContext = payload.context || {
-    project_id: payload.project_id || `proj_${Date.now()}`,
-    user_facts: payload.user_facts || {},
-    ai_assumptions: {},
-    approved_decisions: payload.approved_decisions || {},
-    stage_drafts: {},
-    critic_findings: [],
-    scenario_overrides: [],
-    revision_log: [],
+  // Support both full SharedContext and approved_decisions payload defensively
+  const rawCtx = payload.context || {};
+  const context: SharedContext = {
+    project_id: rawCtx.project_id || payload.project_id || `proj_${Date.now()}`,
+    user_facts: rawCtx.user_facts || payload.user_facts || {},
+    ai_assumptions: rawCtx.ai_assumptions || {},
+    approved_decisions: rawCtx.approved_decisions || payload.approved_decisions || {},
+    stage_drafts: rawCtx.stage_drafts || {},
+    critic_findings: Array.isArray(rawCtx.critic_findings) ? rawCtx.critic_findings : [],
+    consistency_findings: Array.isArray(rawCtx.consistency_findings) ? rawCtx.consistency_findings : [],
+    scenario_overrides: Array.isArray(rawCtx.scenario_overrides) ? rawCtx.scenario_overrides : [],
+    revision_log: Array.isArray(rawCtx.revision_log) ? rawCtx.revision_log : [],
   };
 
   // If called without approved_decisions for the trigger stage (e.g. standalone API probe test),

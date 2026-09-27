@@ -3,6 +3,7 @@
  * Facts vs. assumptions are visually distinct.
  * Uses StageScreen for consistent structure.
  */
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFOILStore } from '../../store/foilStore';
 import { StageScreen } from '../../components/StageScreen';
@@ -61,6 +62,13 @@ export function DiscoveryStage() {
   const content = (approved?.content ?? draft?.content) as unknown as DiscoveryContent | undefined;
   const isApproved = ui.approval_state === 'approved' || Boolean(approved);
   const ideaText = store.ctx.user_facts?.business_description ? String(store.ctx.user_facts.business_description).trim() : '';
+
+  useEffect(() => {
+    if (!content && !isApproved && !ui.is_loading && !ui.error && ideaText) {
+      handleGenerate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, isApproved, ui.is_loading, ui.error, ideaText]);
 
   async function handleGenerate() {
     store.setLoading('discovery', true);
