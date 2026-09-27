@@ -30,14 +30,12 @@ export function getAIProvider(overrideProvider?: AIProvider): AIProvider {
 
   switch (selected) {
     case 'OPENAI':
-      try {
-        defaultProviderInstance = new OpenAIProvider();
-        return defaultProviderInstance;
-      } catch (err) {
-        console.warn('Failed to initialize OpenAIProvider, falling back to MockAIProvider:', err);
+      if (process.env.NODE_ENV === 'test' && (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.startsWith('sk-'))) {
         defaultProviderInstance = new MockAIProvider();
         return defaultProviderInstance;
       }
+      defaultProviderInstance = new OpenAIProvider();
+      return defaultProviderInstance;
     case 'GEMINI':
       defaultProviderInstance = new GeminiProvider();
       return defaultProviderInstance;
