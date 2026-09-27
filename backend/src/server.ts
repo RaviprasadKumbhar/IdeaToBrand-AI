@@ -10,6 +10,7 @@ import { interviewRouter } from "./routes/interview.js";
 import { brandPlanRouter } from "./routes/brandPlan.js";
 
 import path from "path";
+import fs from "fs";
 
 dotenv.config();
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
@@ -37,6 +38,25 @@ app.use("/api", scenarioProbeRouter);
 app.use("/api", stagesRouter);
 app.use("/api", interviewRouter);
 app.use("/api", brandPlanRouter);
+
+// Serve static frontend assets and SPA fallback in production if built
+const frontendDist = path.resolve(process.cwd(), "../frontend/dist");
+const frontendDistLocal = path.resolve(process.cwd(), "frontend/dist");
+const resolvedDist = fs.existsSync(frontendDist)
+  ? frontendDist
+  : fs.existsSync(frontendDistLocal)
+  ? frontendDistLocal
+  : null;
+
+if (resolvedDist) {
+  app.use(express.static(resolvedDist));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) {
+      return next();
+    }
+    res.sendFile(path.join(resolvedDist, "index.html"));
+  });
+}
 
 // 404 handler for unmapped routes
 app.use((req, res) => {
